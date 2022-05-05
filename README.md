@@ -1,4 +1,4 @@
-# MessagePack for JavaScript/ECMA-262  <!-- omit in toc -->
+# MessagePack for JavaScript/ECMA-262 <!-- omit in toc -->
 
 [![npm version](https://img.shields.io/npm/v/@msgpack/msgpack.svg)](https://www.npmjs.com/package/@msgpack/msgpack) ![CI](https://github.com/msgpack/msgpack-javascript/workflows/CI/badge.svg) [![codecov](https://codecov.io/gh/msgpack/msgpack-javascript/branch/master/graphs/badge.svg)](https://codecov.io/gh/msgpack/msgpack-javascript) [![minzip](https://badgen.net/bundlephobia/minzip/@msgpack/msgpack)](https://bundlephobia.com/result?p=@msgpack/msgpack) [![tree-shaking](https://badgen.net/bundlephobia/tree-shaking/@msgpack/msgpack)](https://bundlephobia.com/result?p=@msgpack/msgpack)
 
@@ -10,7 +10,7 @@ This library serves as a comprehensive reference implementation of MessagePack f
 
 Additionally, this is also a universal JavaScript library. It is compatible not only with browsers, but with Node.js or other JavaScript engines that implement ES2015+ standards. As it is written in [TypeScript](https://www.typescriptlang.org/), this library bundles up-to-date type definition files (`d.ts`).
 
-*Note that this is the second edition of "MessagePack for JavaScript". The first edition, which was implemented in ES5 and never released to npmjs.com, is tagged as [`classic`](https://github.com/msgpack/msgpack-javascript/tree/classic).
+\*Note that this is the second edition of "MessagePack for JavaScript". The first edition, which was implemented in ES5 and never released to npmjs.com, is tagged as [`classic`](https://github.com/msgpack/msgpack-javascript/tree/classic).
 
 ## Synopsis
 
@@ -44,15 +44,16 @@ deepStrictEqual(decode(encoded), object);
     - [`EncoderOptions`](#encoderoptions)
   - [`decode(buffer: ArrayLike<number> | BufferSource, options?: DecoderOptions): unknown`](#decodebuffer-arraylikenumber--buffersource-options-decoderoptions-unknown)
     - [`DecoderOptions`](#decoderoptions)
+      - [`IntMode`](#intmode)
   - [`decodeMulti(buffer: ArrayLike<number> | BufferSource, options?: DecoderOptions): Generator<unknown, void, unknown>`](#decodemultibuffer-arraylikenumber--buffersource-options-decoderoptions-generatorunknown-void-unknown)
   - [`decodeAsync(stream: ReadableStreamLike<ArrayLike<number> | BufferSource>, options?: DecoderOptions): Promise<unknown>`](#decodeasyncstream-readablestreamlikearraylikenumber--buffersource-options-decoderoptions-promiseunknown)
   - [`decodeArrayStream(stream: ReadableStreamLike<ArrayLike<number> | BufferSource>, options?: DecoderOptions): AsyncIterable<unknown>`](#decodearraystreamstream-readablestreamlikearraylikenumber--buffersource-options-decoderoptions-asynciterableunknown)
   - [`decodeMultiStream(stream: ReadableStreamLike<ArrayLike<number> | BufferSource>, options?: DecoderOptions): AsyncIterable<unknown>`](#decodemultistreamstream-readablestreamlikearraylikenumber--buffersource-options-decoderoptions-asynciterableunknown)
   - [Reusing Encoder and Decoder instances](#reusing-encoder-and-decoder-instances)
 - [Extension Types](#extension-types)
-    - [ExtensionCodec context](#extensioncodec-context)
-    - [Handling BigInt with ExtensionCodec](#handling-bigint-with-extensioncodec)
-    - [The temporal module as timestamp extensions](#the-temporal-module-as-timestamp-extensions)
+  - [ExtensionCodec context](#extensioncodec-context)
+  - [Handling BigInt and big numbers](#handling-bigint-and-big-numbers)
+  - [The temporal module as timestamp extensions](#the-temporal-module-as-timestamp-extensions)
 - [Decoding a Blob](#decoding-a-blob)
 - [MessagePack Specification](#messagepack-specification)
   - [MessagePack Mapping Table](#messagepack-mapping-table)
@@ -109,17 +110,18 @@ console.log(buffer);
 
 #### `EncoderOptions`
 
-Name|Type|Default
-----|----|----
-extensionCodec | ExtensionCodec | `ExtensionCodec.defaultCodec`
-context | user-defined | -
-useBigInt64 | boolean | false
-maxDepth | number | `100`
-initialBufferSize | number | `2048`
-sortKeys | boolean | false
-forceFloat32 | boolean | false
-forceIntegerToFloat | boolean | false
-ignoreUndefined | boolean | false
+| Name                | Type           | Default                       |
+| ------------------- | -------------- | ----------------------------- |
+| extensionCodec      | ExtensionCodec | `ExtensionCodec.defaultCodec` |
+| context             | user-defined   | -                             |
+| useInt64            | boolean        | false                         |
+| forceBigIntToInt64  | boolean        | false                         |
+| maxDepth            | number         | `100`                         |
+| initialBufferSize   | number         | `2048`                        |
+| sortKeys            | boolean        | false                         |
+| forceFloat32        | boolean        | false                         |
+| forceIntegerToFloat | boolean        | false                         |
+| ignoreUndefined     | boolean        | false                         |
 
 ### `decode(buffer: ArrayLike<number> | BufferSource, options?: DecoderOptions): unknown`
 
@@ -143,18 +145,31 @@ NodeJS `Buffer` is also acceptable because it is a subclass of `Uint8Array`.
 
 #### `DecoderOptions`
 
-Name|Type|Default
-----|----|----
-extensionCodec | ExtensionCodec | `ExtensionCodec.defaultCodec`
-context | user-defined | -
-useBigInt64 | boolean | false
-maxStrLength | number | `4_294_967_295` (UINT32_MAX)
-maxBinLength | number | `4_294_967_295` (UINT32_MAX)
-maxArrayLength | number | `4_294_967_295` (UINT32_MAX)
-maxMapLength | number | `4_294_967_295` (UINT32_MAX)
-maxExtLength | number | `4_294_967_295` (UINT32_MAX)
+| Name           | Type           | Default                                                                              |
+| -------------- | -------------- | ------------------------------------------------------------------------------------ |
+| extensionCodec | ExtensionCodec | `ExtensionCodec.defaultCodec`                                                        |
+| context        | user-defined   | -                                                                                    |
+| useBigInt64    | boolean        | false                                                                                |
+| intMode        | IntMode        | `IntMode.AS_ENCODED` if `useBigInt64` is `true` or `IntMode.UNSAFE_NUMBER` otherwise |
+| maxStrLength   | number         | `4_294_967_295` (UINT32_MAX)                                                         |
+| maxBinLength   | number         | `4_294_967_295` (UINT32_MAX)                                                         |
+| maxArrayLength | number         | `4_294_967_295` (UINT32_MAX)                                                         |
+| maxMapLength   | number         | `4_294_967_295` (UINT32_MAX)                                                         |
+| maxExtLength   | number         | `4_294_967_295` (UINT32_MAX)                                                         |
 
 You can use `max${Type}Length` to limit the length of each type decoded.
+
+`intMode` determines whether decoded integers should be returned as numbers or bigints in different circumstances. The possible values are [described below](#intmode).
+
+##### `IntMode`
+
+The `IntMode` enum defines different options for decoding integers. They are described below:
+
+- `IntMode.UNSAFE_NUMBER`: Always returns the value as a number. Be aware that there will be a loss of precision if the value is outside the range of `Number.MIN_SAFE_INTEGER` to `Number.MAX_SAFE_INTEGER`.
+- `IntMode.SAFE_NUMBER`: Always returns the value as a number, but throws an error if the value is outside of the range of `Number.MIN_SAFE_INTEGER` to `Number.MAX_SAFE_INTEGER`.
+- `IntMode.MIXED`: Returns all values inside the range of `Number.MIN_SAFE_INTEGER` to `Number.MAX_SAFE_INTEGER` as numbers and all values outside that range as bigints.
+- `IntMode.AS_ENCODED`: Returns all values encoded as int64/uint64 as bigints and all other integers as numbers.
+- `IntMode.BIGINT`: Always returns the value as a bigint, even if it is small enough to safely fit in a number.
 
 ### `decodeMulti(buffer: ArrayLike<number> | BufferSource, options?: DecoderOptions): Generator<unknown, void, unknown>`
 
@@ -192,7 +207,9 @@ const contentType = response.headers.get("Content-Type");
 if (contentType && contentType.startsWith(MSGPACK_TYPE) && response.body != null) {
   const object = await decodeAsync(response.body);
   // do something with object
-} else { /* handle errors */ }
+} else {
+  /* handle errors */
+}
 ```
 
 ### `decodeArrayStream(stream: ReadableStreamLike<ArrayLike<number> | BufferSource>, options?: DecoderOptions): AsyncIterable<unknown>`
@@ -267,7 +284,7 @@ import { encode, decode, ExtensionCodec } from "@msgpack/msgpack";
 const extensionCodec = new ExtensionCodec();
 
 // Set<T>
-const SET_EXT_TYPE = 0 // Any in 0-127
+const SET_EXT_TYPE = 0; // Any in 0-127
 extensionCodec.register({
   type: SET_EXT_TYPE,
   encode: (object: unknown): Uint8Array | null => {
@@ -352,19 +369,28 @@ const encoded = = encode({myType: new MyType<any>()}, { extensionCodec, context 
 const decoded = decode(encoded, { extensionCodec, context });
 ```
 
-#### Handling BigInt with ExtensionCodec
+#### Handling BigInt and big numbers
 
-This library does not handle BigInt by default, but you have two options to handle it:
+**Decoding**
 
-* Set `useBigInt64: true` to map bigint to MessagePack's int64/uint64
-* Define a custom `ExtensionCodec` to map bigint to a MessagePack's extension type
+This library does not handle decoding BigInt by default, but you have three options to handle it:
 
-`useBigInt64: true` is the simplest way to handle bigint, but it has limitations:
+- Set `useBigInt64: true` to decode MessagePack's int64/uint64 into a BigInt
+- Set `intMode` to exert [greater control](#intmode) over BigInt handling
+- Define a custom `ExtensionCodec` to map bigint to a MessagePack extension type
 
-* A bigint is encoded in 8 byte binaries even if it's a small integer
-* A bigint must be smaller than the max value of the uint64 and larger than the min value of the int64. Otherwise the behavior is undefined.
+**Encoding**
 
-So you might want to define a custom codec to handle bigint like this:
+This library will encode a BigInt into a MessagePack int64/uint64 if it is > 32-bit OR you set `forceBigIntToInt64` to `true`. This library will encode a `number` that is > 32-bit into a MessagePack int64/uint64 if it is > 32-bit ONLY if you set `useInt64` to true, otherwise it encodes it as a MessagePack float64.
+
+If you set `forceBigIntToInt64` to `true` the note:
+
+- A bigint is encoded in 8 byte binaries even if it's a small integer
+- A bigint must be smaller than the max value of the uint64 and larger than the min value of the int64. Otherwise the behavior is undefined.
+
+**Custom codec**
+
+Alternatively, you can define a custom codec to handle bigint like this:
 
 ```typescript
 import { deepStrictEqual } from "assert";
@@ -405,7 +431,7 @@ deepStrictEqual(decode(encoded, { extensionCodec }), value);
 
 There is a proposal for a new date/time representations in JavaScript:
 
-* https://github.com/tc39/proposal-temporal
+- https://github.com/tc39/proposal-temporal
 
 This library maps `Date` to the MessagePack timestamp extension by default, but you can re-map the temporal module (or [Temporal Polyfill](https://github.com/tc39/proposal-temporal/tree/main/polyfill)) to the timestamp extension like this:
 
@@ -474,9 +500,9 @@ async function decodeFromBlob(blob: Blob): unknown {
 
 This library is compatible with the "August 2017" revision of MessagePack specification at the point where timestamp ext was added:
 
-* [x] str/bin separation, added at August 2013
-* [x] extension types, added at August 2013
-* [x] timestamp ext type, added at August 2017
+- [x] str/bin separation, added at August 2013
+- [x] extension types, added at August 2013
+- [x] timestamp ext type, added at August 2017
 
 The living specification is here:
 
@@ -488,46 +514,44 @@ Note that as of June 2019 there're no official "version" on the MessagePack spec
 
 The following table shows how JavaScript values are mapped to [MessagePack formats](https://github.com/msgpack/msgpack/blob/master/spec.md) and vice versa.
 
-The mapping of integers varies on the setting of `useBigInt64`.
+The mapping of integers varies on the setting of `intMode`.
 
-The default, `useBigInt64: false` is:
+| Source Value          | MessagePack Format   | Value Decoded          |
+| --------------------- | -------------------- | ---------------------- |
+| null, undefined       | nil                  | null (\*1)             |
+| boolean (true, false) | bool family          | boolean (true, false)  |
+| number (53-bit int)   | int family           | number or bigint (\*2) |
+| number (64-bit float) | float family         | number (64-bit float)  |
+| bigint                | int family           | number or bigint (\*2) |
+| string                | str family           | string                 |
+| ArrayBufferView       | bin family           | Uint8Array (\*3)       |
+| Array                 | array family         | Array                  |
+| Object                | map family           | Object (\*4)           |
+| Date                  | timestamp ext family | Date (\*5)             |
+| bigint                | int family           | bigint                 |
 
-Source Value|MessagePack Format|Value Decoded
-----|----|----
-null, undefined|nil|null (*1)
-boolean (true, false)|bool family|boolean (true, false)
-number (53-bit int)|int family|number
-number (64-bit float)|float family|number
-string|str family|string
-ArrayBufferView |bin family|Uint8Array (*2)
-Array|array family|Array
-Object|map family|Object (*3)
-Date|timestamp ext family|Date (*4)
-bigint|N/A|N/A (*5)
-
-* *1 Both `null` and `undefined` are mapped to `nil` (`0xC0`) type, and are decoded into `null`
-* *2 Any `ArrayBufferView`s including NodeJS's `Buffer` are mapped to `bin` family, and are decoded into `Uint8Array`
-* *3 In handling `Object`, it is regarded as `Record<string, unknown>` in terms of TypeScript
-* *4 MessagePack timestamps may have nanoseconds, which will lost when it is decoded into JavaScript `Date`. This behavior can be overridden by registering `-1` for the extension codec.
-* *5 bigint is not supported in `useBigInt64: false` mode, but you can define an extension codec for it.
+- \*1 Both `null` and `undefined` are mapped to `nil` (`0xC0`) type, and are decoded into `null`
+- \*2 MessagePack ints are decoded as either numbers or bigints depending on the [IntMode](#intmode) used during decoding.
+- \*3 Any `ArrayBufferView`s including NodeJS's `Buffer` are mapped to `bin` family, and are decoded into `Uint8Array`
+- \*4 In handling `Object`, it is regarded as `Record<string, unknown>` in terms of TypeScript
+- \*5 MessagePack timestamps may have nanoseconds, which will lost when it is decoded into JavaScript `Date`. This behavior can be overridden by registering `-1` for the extension codec.
 
 If you set `useBigInt64: true`, the following mapping is used:
 
-Source Value|MessagePack Format|Value Decoded
-----|----|----
-null, undefined|nil|null
-boolean (true, false)|bool family|boolean (true, false)
-**number (32-bit int)**|int family|number
-**number (except for the above)**|float family|number
-**bigint**|int64 / uint64|bigint (*6)
-string|str family|string
-ArrayBufferView |bin family|Uint8Array
-Array|array family|Array
-Object|map family|Object
-Date|timestamp ext family|Date
+| Source Value                      | MessagePack Format   | Value Decoded         |
+| --------------------------------- | -------------------- | --------------------- |
+| null, undefined                   | nil                  | null                  |
+| boolean (true, false)             | bool family          | boolean (true, false) |
+| **number (32-bit int)**           | int family           | number                |
+| **number (except for the above)** | float family         | number                |
+| **bigint**                        | int64 / uint64       | bigint (\*5)          |
+| string                            | str family           | string                |
+| ArrayBufferView                   | bin family           | Uint8Array            |
+| Array                             | array family         | Array                 |
+| Object                            | map family           | Object                |
+| Date                              | timestamp ext family | Date                  |
 
-
-* *6 If the bigint is larger than the max value of uint64 or smaller than the min value of int64, then the behavior is undefined.
+- \*5 If the bigint is larger than the max value of uint64 or smaller than the min value of int64, then the behavior is undefined.
 
 ## Prerequisites
 
@@ -535,12 +559,12 @@ This is a universal JavaScript library that supports major browsers and NodeJS.
 
 ### ECMA-262
 
-* ES2015 language features
-* ES2018 standard library, including:
-  * Typed arrays (ES2015)
-  * Async iterations (ES2018)
-  * Features added in ES2015-ES2022
-* whatwg encodings (`TextEncoder` and `TextDecoder`)
+- ES2015 language features
+- ES2018 standard library, including:
+  - Typed arrays (ES2015)
+  - Async iterations (ES2018)
+  - Features added in ES2015-ES2022
+- whatwg encodings (`TextEncoder` and `TextDecoder`)
 
 ES2022 standard library used in this library can be polyfilled with [core-js](https://github.com/zloirock/core-js).
 
@@ -566,16 +590,16 @@ However, MessagePack can handles binary data effectively, actual performance dep
 
 Benchmark on NodeJS/v18.1.0 (V8/10.1)
 
-operation                                                         |   op   |   ms  |  op/s
------------------------------------------------------------------ | ------: | ----: | ------:
-buf = Buffer.from(JSON.stringify(obj));                           |  902100 |  5000 |  180420
-obj = JSON.parse(buf.toString("utf-8"));                          |  898700 |  5000 |  179740
-buf = require("msgpack-lite").encode(obj);                        |  411000 |  5000 |   82200
-obj = require("msgpack-lite").decode(buf);                        |  246200 |  5001 |   49230
-buf = require("@msgpack/msgpack").encode(obj);                    |  843300 |  5000 |  168660
-obj = require("@msgpack/msgpack").decode(buf);                    |  489300 |  5000 |   97860
-buf = /* @msgpack/msgpack */ encoder.encode(obj);                 | 1154200 |  5000 |  230840
-obj = /* @msgpack/msgpack */ decoder.decode(buf);                 |  448900 |  5000 |   89780
+| operation                                         |      op |   ms |   op/s |
+| ------------------------------------------------- | ------: | ---: | -----: |
+| buf = Buffer.from(JSON.stringify(obj));           |  902100 | 5000 | 180420 |
+| obj = JSON.parse(buf.toString("utf-8"));          |  898700 | 5000 | 179740 |
+| buf = require("msgpack-lite").encode(obj);        |  411000 | 5000 |  82200 |
+| obj = require("msgpack-lite").decode(buf);        |  246200 | 5001 |  49230 |
+| buf = require("@msgpack/msgpack").encode(obj);    |  843300 | 5000 | 168660 |
+| obj = require("@msgpack/msgpack").decode(buf);    |  489300 | 5000 |  97860 |
+| buf = /_ @msgpack/msgpack _/ encoder.encode(obj); | 1154200 | 5000 | 230840 |
+| obj = /_ @msgpack/msgpack _/ decoder.decode(buf); |  448900 | 5000 |  89780 |
 
 Note that `JSON` cases use `Buffer` to emulate I/O where a JavaScript string must be converted into a byte array encoded in UTF-8, whereas MessagePack modules deal with byte arrays.
 
@@ -585,11 +609,11 @@ Note that `JSON` cases use `Buffer` to emulate I/O where a JavaScript string mus
 
 The NPM package distributed in npmjs.com includes both ES2015+ and ES5 files:
 
-* `dist/` is compiled into ES2019 with CommomJS, provided for NodeJS v10
-* `dist.es5+umd/` is compiled into ES5 with UMD
-  * `dist.es5+umd/msgpack.min.js` - the minified file
-  * `dist.es5+umd/msgpack.js` - the non-minified file
-* `dist.es5+esm/` is compiled into ES5 with ES modules, provided for webpack-like bundlers and NodeJS's ESM-mode
+- `dist/` is compiled into ES2019 with CommomJS, provided for NodeJS v10
+- `dist.es5+umd/` is compiled into ES5 with UMD
+  - `dist.es5+umd/msgpack.min.js` - the minified file
+  - `dist.es5+umd/msgpack.js` - the non-minified file
+- `dist.es5+esm/` is compiled into ES5 with ES modules, provided for webpack-like bundlers and NodeJS's ESM-mode
 
 If you use NodeJS and/or webpack, their module resolvers use the suitable one automatically.
 
@@ -602,7 +626,6 @@ This library is available via CDN:
 ```
 
 It loads `MessagePack` module to the global object.
-
 
 ## Deno Support
 
@@ -628,12 +651,12 @@ This library uses Travis CI.
 
 test matrix:
 
-* TypeScript targets
-  * `target=es2019` / `target=es5`
-* JavaScript engines
-  * NodeJS, browsers (Chrome, Firefox, Safari, IE11, and so on)
+- TypeScript targets
+  - `target=es2019` / `target=es5`
+- JavaScript engines
+  - NodeJS, browsers (Chrome, Firefox, Safari, IE11, and so on)
 
-See [test:* in package.json](./package.json) and [.travis.yml](./.travis.yml) for details.
+See [test:\* in package.json](./package.json) and [.travis.yml](./.travis.yml) for details.
 
 ### Release Engineering
 
