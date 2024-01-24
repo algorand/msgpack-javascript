@@ -2,8 +2,9 @@
 /* eslint-disable no-console */
 
 import fs from "fs";
+import {globSync} from "glob";
 
-const files = process.argv.slice(2);
+const files = globSync(process.argv.slice(2));
 
 for (const file of files) {
   const fileMjs = file.replace(/\.js$/, ".mjs");
