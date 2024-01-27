@@ -1,10 +1,6 @@
 {
-	// List of extensions which should be recommended for users of this workspace.
-	"recommendations": [
-		"dbaeumer.vscode-eslint",
-		"yzhang.markdown-all-in-one"
-	],
-	// List of extensions recommended by VS Code that should not be recommended for users of this workspace.
-	"unwantedRecommendations": [
-	]
+  // List of extensions which should be recommended for users of this workspace.
+  "recommendations": ["dbaeumer.vscode-eslint", "yzhang.markdown-all-in-one", "hbenl.vscode-mocha-test-adapter"],
+  // List of extensions recommended by VS Code that should not be recommended for users of this workspace.
+  "unwantedRecommendations": []
 }

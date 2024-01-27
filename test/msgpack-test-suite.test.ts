@@ -1,8 +1,9 @@
 import assert from "assert";
 import util from "util";
-import { Exam } from "msgpack-test-js";
 import { MsgTimestamp } from "msg-timestamp";
 import { encode, decode, ExtensionCodec, EXT_TIMESTAMP, encodeTimeSpecToTimestamp } from "@msgpack/msgpack";
+import { getExams } from "./utils/group";
+import { TypeKey } from "./utils/type";
 
 const extensionCodec = new ExtensionCodec();
 extensionCodec.register({
@@ -22,20 +23,21 @@ extensionCodec.register({
   },
 });
 
-const TEST_TYPES = {
-  array: 1,
+const TEST_TYPES: Record<TypeKey, boolean> = {
+  array: true,
   bignum: 0, // TODO
-  binary: 1,
-  bool: 1,
-  map: 1,
-  nil: 1,
-  number: 1,
-  string: 1,
-  timestamp: 1,
+  binary: true,
+  bool: true,
+  map: true,
+  nil: true,
+  number: true,
+  string: true,
+  timestamp: true,
+  ext: false,
 };
 
 describe("msgpack-test-suite", () => {
-  Exam.getExams(TEST_TYPES).forEach((exam) => {
+  getExams(TEST_TYPES).forEach((exam) => {
     const types = exam.getTypes(TEST_TYPES);
     const first = types[0]!;
     const title = `${first}: ${exam.stringify(first)}`;

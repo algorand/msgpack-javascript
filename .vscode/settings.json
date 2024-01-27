@@ -2,13 +2,13 @@
   "typescript.tsdk": "node_modules/typescript/lib",
   "files.eol": "\n",
   "editor.tabSize": 2,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true,
   "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": true
+    "source.fixAll.eslint": true,
+    "source.fixAll": "always"
   },
-  "cSpell.words": [
-    "instanceof",
-    "tsdoc",
-    "typeof",
-    "whatwg"
-  ]
+  "cSpell.words": ["instanceof", "tsdoc", "typeof", "whatwg"],
+  "mochaExplorer.files": "test/**/*.test.{ts,js}",
+  "mochaExplorer.require": ["ts-node/register", "tsconfig-paths/register"]
 }
