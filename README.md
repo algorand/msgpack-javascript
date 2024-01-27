@@ -115,12 +115,15 @@ console.log(buffer);
 | extensionCodec      | ExtensionCodec | `ExtensionCodec.defaultCodec` |
 | context             | user-defined   | -                             |
 | forceBigIntToInt64  | boolean        | false                         |
+| useRawBinaryStrings | boolean        | false                         |
 | maxDepth            | number         | `100`                         |
 | initialBufferSize   | number         | `2048`                        |
 | sortKeys            | boolean        | false                         |
 | forceFloat32        | boolean        | false                         |
 | forceIntegerToFloat | boolean        | false                         |
 | ignoreUndefined     | boolean        | false                         |
+
+To skip UTF-8 decoding of strings, `useRawBinaryStrings` can be set to `true`. In this case, strings are decoded into `Uint8Array`.
 
 ### `decode(buffer: ArrayLike<number> | BufferSource, options?: DecoderOptions): unknown`
 
@@ -522,18 +525,19 @@ The mapping of integers varies on the setting of `intMode`.
 | number (53-bit int)   | int family           | number or bigint (\*2) |
 | number (64-bit float) | float family         | number (64-bit float)  |
 | bigint                | int family           | number or bigint (\*2) |
-| string                | str family           | string                 |
-| ArrayBufferView       | bin family           | Uint8Array (\*3)       |
+| string                | str family           | string (\*3)           |
+| ArrayBufferView       | bin family           | Uint8Array (\*4)       |
 | Array                 | array family         | Array                  |
-| Object                | map family           | Object (\*4)           |
-| Date                  | timestamp ext family | Date (\*5)             |
+| Object                | map family           | Object (\*5)           |
+| Date                  | timestamp ext family | Date (\*6)             |
 | bigint                | int family           | bigint                 |
 
-- \*1 Both `null` and `undefined` are mapped to `nil` (`0xC0`) type, and are decoded into `null`
-- \*2 MessagePack ints are decoded as either numbers or bigints depending on the [IntMode](#intmode) used during decoding.
-- \*3 Any `ArrayBufferView`s including NodeJS's `Buffer` are mapped to `bin` family, and are decoded into `Uint8Array`
-- \*4 In handling `Object`, it is regarded as `Record<string, unknown>` in terms of TypeScript
-- \*5 MessagePack timestamps may have nanoseconds, which will lost when it is decoded into JavaScript `Date`. This behavior can be overridden by registering `-1` for the extension codec.
+* \*1 Both `null` and `undefined` are mapped to `nil` (`0xC0`) type, and are decoded into `null`
+* \*2 MessagePack ints are decoded as either numbers or bigints depending on the [IntMode](#intmode) used during decoding.
+* \*3 If you'd like to skip UTF-8 decoding of strings, set `useRawBinaryStrings: true`. In this case, strings are decoded into `Uint8Array`.
+* \*4 Any `ArrayBufferView`s including NodeJS's `Buffer` are mapped to `bin` family, and are decoded into `Uint8Array`
+* \*5 In handling `Object`, it is regarded as `Record<string, unknown>` in terms of TypeScript
+* \*6 MessagePack timestamps may have nanoseconds, which will lost when it is decoded into JavaScript `Date`. This behavior can be overridden by registering `-1` for the extension codec.
 
 If you set `useBigInt64: true`, the following mapping is used:
 
@@ -550,8 +554,9 @@ If you set `useBigInt64: true`, the following mapping is used:
 | Object                            | map family           | Object                |
 | Date                              | timestamp ext family | Date                  |
 
-- \*5 If the bigint is larger than the max value of uint64 or smaller than the min value of int64, then the behavior is undefined.
+* \*6 If the bigint is larger than the max value of uint64 or smaller than the min value of int64, then the behavior is undefined.
 
+* \*7 If the bigint is larger than the max value of uint64 or smaller than the min value of int64, then the behavior is undefined.
 ## Prerequisites
 
 This is a universal JavaScript library that supports major browsers and NodeJS.
