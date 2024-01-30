@@ -121,6 +121,7 @@ console.log(buffer);
 | sortKeys            | boolean        | false                         |
 | forceFloat32        | boolean        | false                         |
 | forceIntegerToFloat | boolean        | false                         |
+| forceNumericMapKeys | boolean        | false                         |
 | ignoreUndefined     | boolean        | false                         |
 
 To skip UTF-8 decoding of strings, `useRawBinaryStrings` can be set to `true`. In this case, strings are decoded into `Uint8Array`.

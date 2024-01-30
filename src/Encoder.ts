@@ -54,6 +54,13 @@ export type EncoderOptions<ContextType = undefined> = Partial<
     forceFloat32: boolean;
 
     /**
+     * If `true`, numeric map keys will be encoded as ints/floats (as appropriate) rather than strings (the default).
+     *
+     * Defaults to `false`.
+     */
+    forceNumericMapKeys: boolean;
+
+    /**
      * If `true`, an object property with `undefined` value are ignored.
      * e.g. `{ foo: undefined }` will be encoded as `{}`, as `JSON.stringify()` does.
      *
@@ -82,6 +89,7 @@ export class Encoder<ContextType = undefined> {
   private readonly forceFloat32: boolean;
   private readonly ignoreUndefined: boolean;
   private readonly forceIntegerToFloat: boolean;
+  private readonly forceNumericMapKeys: boolean;
 
   private pos: number;
   private view: DataView;
@@ -98,6 +106,7 @@ export class Encoder<ContextType = undefined> {
     this.forceFloat32 = options?.forceFloat32 ?? false;
     this.ignoreUndefined = options?.ignoreUndefined ?? false;
     this.forceIntegerToFloat = options?.forceIntegerToFloat ?? false;
+    this.forceNumericMapKeys = options?.forceNumericMapKeys ?? false;
 
     this.pos = 0;
     this.view = new DataView(new ArrayBuffer(this.initialBufferSize));
@@ -383,13 +392,23 @@ export class Encoder<ContextType = undefined> {
     return count;
   }
 
+  private isNumber(value: string | number) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+    return !isNaN(value as any) && !isNaN(parseFloat(value as any));
+  }
+
   private encodeMap(object: Record<string, unknown>, depth: number) {
-    const keys = Object.keys(object);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+    const keys = Object.keys(object).map((key) => (this.forceNumericMapKeys && this.isNumber(key) ? Number(key) : key));
     if (this.sortKeys) {
-      keys.sort();
+      if (keys.filter((k) => typeof k === "number").length > 0) {
+        keys.sort().sort((a, b) => +a - +b);
+      } else {
+        keys.sort();
+      }
     }
 
-    const size = this.ignoreUndefined ? this.countWithoutUndefined(object, keys) : keys.length;
+    const size = this.ignoreUndefined ? this.countWithoutUndefined(object, Object.keys(object)) : keys.length;
 
     if (size < 16) {
       // fixmap
@@ -410,7 +429,11 @@ export class Encoder<ContextType = undefined> {
       const value = object[key];
 
       if (!(this.ignoreUndefined && value === undefined)) {
-        this.encodeString(key);
+        if (typeof key === "string") {
+          this.encodeString(key);
+        } else {
+          this.encodeNumber(key);
+        }
         this.doEncode(value, depth + 1);
       }
     }
