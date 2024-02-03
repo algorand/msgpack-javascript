@@ -114,7 +114,6 @@ console.log(buffer);
 | ------------------- | -------------- | ----------------------------- |
 | extensionCodec      | ExtensionCodec | `ExtensionCodec.defaultCodec` |
 | context             | user-defined   | -                             |
-| useInt64            | boolean        | false                         |
 | forceBigIntToInt64  | boolean        | false                         |
 | maxDepth            | number         | `100`                         |
 | initialBufferSize   | number         | `2048`                        |
@@ -381,9 +380,9 @@ This library does not handle decoding BigInt by default, but you have three opti
 
 **Encoding**
 
-This library will encode a BigInt into a MessagePack int64/uint64 if it is > 32-bit OR you set `forceBigIntToInt64` to `true`. This library will encode a `number` that is > 32-bit into a MessagePack int64/uint64 if it is > 32-bit ONLY if you set `useInt64` to true, otherwise it encodes it as a MessagePack float64.
+This library will encode a BigInt into a MessagePack int64/uint64 if it is > 32-bit OR you set `forceBigIntToInt64` to `true`. This library will encode a `number` that is > 32-bit into a MessagePack int64/uint64 if it is > 32-bit.
 
-If you set `forceBigIntToInt64` to `true` the note:
+If you set `forceBigIntToInt64` to `true` note:
 
 - A bigint is encoded in 8 byte binaries even if it's a small integer
 - A bigint must be smaller than the max value of the uint64 and larger than the min value of the int64. Otherwise the behavior is undefined.

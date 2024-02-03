@@ -221,7 +221,7 @@ export class Decoder<ContextType = undefined> {
     this.extensionCodec = options?.extensionCodec ?? (ExtensionCodec.defaultCodec as ExtensionCodecType<ContextType>);
     this.context = (options as { context: ContextType } | undefined)?.context as ContextType; // needs a type assertion because EncoderOptions has no context property when ContextType is undefined
 
-    this.intMode = options?.intMode ?? options?.useBigInt64 ? IntMode.AS_ENCODED : IntMode.UNSAFE_NUMBER;
+    this.intMode = options?.intMode ?? (options?.useBigInt64 ? IntMode.AS_ENCODED : IntMode.UNSAFE_NUMBER);
     this.maxStrLength = options?.maxStrLength ?? UINT32_MAX;
     this.maxBinLength = options?.maxBinLength ?? UINT32_MAX;
     this.maxArrayLength = options?.maxArrayLength ?? UINT32_MAX;
