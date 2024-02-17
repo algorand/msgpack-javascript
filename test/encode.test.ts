@@ -94,6 +94,38 @@ describe("encode", () => {
     assert.deepStrictEqual(decode(arrayBuffer), decode(buffer));
   });
 
+  context("forceBigIntToInt64", () => {
+    if (typeof BigInt !== "undefined") {
+      it("encodes bigints as integers without forceBigIntToInt64", () => {
+        let input = BigInt(3);
+        let expected = Uint8Array.from([0x03]);
+        assert.deepStrictEqual(encode(input), expected);
+
+        input = BigInt(-10);
+        expected = Uint8Array.from([0xf6]);
+        assert.deepStrictEqual(encode(input), expected);
+
+        input = BigInt("0xffffffffffffffff");
+        expected = Uint8Array.from([0xcf, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]);
+        assert.deepStrictEqual(encode(input), expected);
+      });
+
+      it("encodes bigints as int64 when forceBigIntToInt64=true", () => {
+        let input = BigInt(3);
+        let expected = Uint8Array.from([0xcf, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03]);
+        assert.deepStrictEqual(encode(input, { forceBigIntToInt64: true }), expected);
+
+        input = BigInt(-10);
+        expected = Uint8Array.from([0xd3, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xf6]);
+        assert.deepStrictEqual(encode(input, { forceBigIntToInt64: true }), expected);
+
+        input = BigInt("0xffffffffffffffff");
+        expected = Uint8Array.from([0xcf, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]);
+        assert.deepStrictEqual(encode(input), expected);
+      });
+    }
+  });
+
   context("Bigint that exceeds 64 bits", () => {
     if (typeof BigInt !== "undefined") {
       const MAX_UINT64_PLUS_ONE = BigInt("0x10000000000000000");

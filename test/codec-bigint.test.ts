@@ -31,8 +31,8 @@ extensionCodec.register({
 });
 
 interface TestCase {
-  input: bigint,
-  expected: Map<IntMode, number | bigint | "error">,
+  input: bigint;
+  expected: Map<IntMode, number | bigint | "error">;
 }
 
 // declared as a function to delay referencing the BigInt constructor
@@ -45,7 +45,7 @@ function BIGINTSPECS(): Record<string, TestCase> {
         [IntMode.SAFE_NUMBER, 0],
         [IntMode.MIXED, 0],
         [IntMode.BIGINT, BigInt(0)],
-      ])
+      ]),
     },
     ONE: {
       input: BigInt(1),
@@ -54,7 +54,7 @@ function BIGINTSPECS(): Record<string, TestCase> {
         [IntMode.SAFE_NUMBER, 1],
         [IntMode.MIXED, 1],
         [IntMode.BIGINT, BigInt(1)],
-      ])
+      ]),
     },
     MINUS_ONE: {
       input: BigInt(-1),
@@ -63,7 +63,7 @@ function BIGINTSPECS(): Record<string, TestCase> {
         [IntMode.SAFE_NUMBER, -1],
         [IntMode.MIXED, -1],
         [IntMode.BIGINT, BigInt(-1)],
-      ])
+      ]),
     },
     X_FF: {
       input: BigInt(0xff),
@@ -72,7 +72,7 @@ function BIGINTSPECS(): Record<string, TestCase> {
         [IntMode.SAFE_NUMBER, 0xff],
         [IntMode.MIXED, 0xff],
         [IntMode.BIGINT, BigInt(0xff)],
-      ])
+      ]),
     },
     MINUS_X_FF: {
       input: BigInt(-0xff),
@@ -81,7 +81,7 @@ function BIGINTSPECS(): Record<string, TestCase> {
         [IntMode.SAFE_NUMBER, -0xff],
         [IntMode.MIXED, -0xff],
         [IntMode.BIGINT, BigInt(-0xff)],
-      ])
+      ]),
     },
     INT32_MAX: {
       input: BigInt(0x7fffffff),
@@ -90,7 +90,7 @@ function BIGINTSPECS(): Record<string, TestCase> {
         [IntMode.SAFE_NUMBER, 0x7fffffff],
         [IntMode.MIXED, 0x7fffffff],
         [IntMode.BIGINT, BigInt(0x7fffffff)],
-      ])
+      ]),
     },
     INT32_MIN: {
       input: BigInt(-0x7fffffff - 1),
@@ -99,7 +99,7 @@ function BIGINTSPECS(): Record<string, TestCase> {
         [IntMode.SAFE_NUMBER, -0x7fffffff - 1],
         [IntMode.MIXED, -0x7fffffff - 1],
         [IntMode.BIGINT, BigInt(-0x7fffffff - 1)],
-      ])
+      ]),
     },
     MAX_SAFE_INTEGER: {
       input: BigInt(Number.MAX_SAFE_INTEGER),
@@ -108,7 +108,7 @@ function BIGINTSPECS(): Record<string, TestCase> {
         [IntMode.SAFE_NUMBER, Number.MAX_SAFE_INTEGER],
         [IntMode.MIXED, Number.MAX_SAFE_INTEGER],
         [IntMode.BIGINT, BigInt(Number.MAX_SAFE_INTEGER)],
-      ])
+      ]),
     },
     MAX_SAFE_INTEGER_PLUS_ONE: {
       input: BigInt(Number.MAX_SAFE_INTEGER) + BigInt(1),
@@ -117,7 +117,7 @@ function BIGINTSPECS(): Record<string, TestCase> {
         [IntMode.SAFE_NUMBER, "error"],
         [IntMode.MIXED, BigInt(Number.MAX_SAFE_INTEGER) + BigInt(1)],
         [IntMode.BIGINT, BigInt(Number.MAX_SAFE_INTEGER) + BigInt(1)],
-      ])
+      ]),
     },
     MIN_SAFE_INTEGER: {
       input: BigInt(Number.MIN_SAFE_INTEGER),
@@ -126,7 +126,7 @@ function BIGINTSPECS(): Record<string, TestCase> {
         [IntMode.SAFE_NUMBER, Number.MIN_SAFE_INTEGER],
         [IntMode.MIXED, Number.MIN_SAFE_INTEGER],
         [IntMode.BIGINT, BigInt(Number.MIN_SAFE_INTEGER)],
-      ])
+      ]),
     },
     MIN_SAFE_INTEGER_MINUS_ONE: {
       input: BigInt(Number.MIN_SAFE_INTEGER) - BigInt(1),
@@ -144,7 +144,7 @@ function BIGINTSPECS(): Record<string, TestCase> {
         [IntMode.SAFE_NUMBER, "error"],
         [IntMode.MIXED, BigInt("0x7fffffffffffffff")],
         [IntMode.BIGINT, BigInt("0x7fffffffffffffff")],
-      ])
+      ]),
     },
     INT64_MIN: {
       input: BigInt(-1) * BigInt("0x8000000000000000"),
@@ -155,7 +155,7 @@ function BIGINTSPECS(): Record<string, TestCase> {
         [IntMode.BIGINT, BigInt(-1) * BigInt("0x8000000000000000")],
       ]),
     },
-  }
+  };
 }
 
 // declared as a function to delay referencing the BigInt constructor
@@ -168,7 +168,7 @@ function BIGUINTSPECS(): Record<string, TestCase> {
         [IntMode.SAFE_NUMBER, 0],
         [IntMode.MIXED, 0],
         [IntMode.BIGINT, BigInt(0)],
-      ])
+      ]),
     },
     ONE: {
       input: BigInt(1),
@@ -177,7 +177,7 @@ function BIGUINTSPECS(): Record<string, TestCase> {
         [IntMode.SAFE_NUMBER, 1],
         [IntMode.MIXED, 1],
         [IntMode.BIGINT, BigInt(1)],
-      ])
+      ]),
     },
     X_FF: {
       input: BigInt(0xff),
@@ -186,7 +186,7 @@ function BIGUINTSPECS(): Record<string, TestCase> {
         [IntMode.SAFE_NUMBER, 0xff],
         [IntMode.MIXED, 0xff],
         [IntMode.BIGINT, BigInt(0xff)],
-      ])
+      ]),
     },
     UINT32_MAX: {
       input: BigInt(0xffffffff),
@@ -195,7 +195,7 @@ function BIGUINTSPECS(): Record<string, TestCase> {
         [IntMode.SAFE_NUMBER, 0xffffffff],
         [IntMode.MIXED, 0xffffffff],
         [IntMode.BIGINT, BigInt(0xffffffff)],
-      ])
+      ]),
     },
     MAX_SAFE_INTEGER: {
       input: BigInt(Number.MAX_SAFE_INTEGER),
@@ -204,7 +204,7 @@ function BIGUINTSPECS(): Record<string, TestCase> {
         [IntMode.SAFE_NUMBER, Number.MAX_SAFE_INTEGER],
         [IntMode.MIXED, Number.MAX_SAFE_INTEGER],
         [IntMode.BIGINT, BigInt(Number.MAX_SAFE_INTEGER)],
-      ])
+      ]),
     },
     MAX_SAFE_INTEGER_PLUS_ONE: {
       input: BigInt(Number.MAX_SAFE_INTEGER) + BigInt(1),
@@ -213,7 +213,7 @@ function BIGUINTSPECS(): Record<string, TestCase> {
         [IntMode.SAFE_NUMBER, "error"],
         [IntMode.MIXED, BigInt(Number.MAX_SAFE_INTEGER) + BigInt(1)],
         [IntMode.BIGINT, BigInt(Number.MAX_SAFE_INTEGER) + BigInt(1)],
-      ])
+      ]),
     },
     UINT64_MAX: {
       input: BigInt("0xffffffffffffffff"),
@@ -222,9 +222,9 @@ function BIGUINTSPECS(): Record<string, TestCase> {
         [IntMode.SAFE_NUMBER, "error"],
         [IntMode.MIXED, BigInt("0xffffffffffffffff")],
         [IntMode.BIGINT, BigInt("0xffffffffffffffff")],
-      ])
+      ]),
     },
-  }
+  };
 }
 
 function abs(value: bigint): bigint {
@@ -241,13 +241,13 @@ describe("codec BigInt", () => {
       const encoded = encode(value, { extensionCodec });
       assert.deepStrictEqual(decode(encoded, { extensionCodec }), value);
     });
-  
+
     it("encodes and decodes MAX_SAFE_INTEGER+1", () => {
       const value = BigInt(Number.MAX_SAFE_INTEGER) + BigInt(1);
       const encoded = encode(value, { extensionCodec });
       assert.deepStrictEqual(decode(encoded, { extensionCodec }), value);
     });
-  
+
     it("encodes and decodes MIN_SAFE_INTEGER-1", () => {
       const value = BigInt(Number.MIN_SAFE_INTEGER) - BigInt(1);
       const encoded = encode(value, { extensionCodec });
@@ -272,20 +272,30 @@ describe("codec BigInt", () => {
     const encoded = encode(value, { extensionCodec });
     assert.deepStrictEqual(decode(encoded, { extensionCodec }), value);
   });
+
   context("native", () => {
     context("int 64", () => {
       const specs = BIGINTSPECS();
 
       for (const name of Object.keys(specs)) {
         const testCase = specs[name]!;
-  
-        it(`sets and gets ${testCase.input} (${testCase.input < 0 ? "-" : ""}0x${abs(testCase.input).toString(16)})`, () => {
+
+        it(`sets and gets ${testCase.input} (${testCase.input < 0 ? "-" : ""}0x${abs(testCase.input).toString(
+          16,
+        )})`, () => {
           const b = new Uint8Array(8);
           const view = new DataView(b.buffer);
           view.setBigInt64(0, testCase.input);
           for (const [mode, expected] of testCase.expected) {
             if (expected === "error") {
-              assert.throws(() => getInt64(view, 0, mode), new RegExp(`Mode is IntMode\\.SAFE_NUMBER and value is not a safe integer: ${testCase.input < 0 ? "-" : ""}0x${abs(testCase.input).toString(16)}$`));
+              assert.throws(
+                () => getInt64(view, 0, mode),
+                new RegExp(
+                  `Mode is IntMode\\.SAFE_NUMBER and value is not a safe integer: ${
+                    testCase.input < 0 ? "-" : ""
+                  }0x${abs(testCase.input).toString(16)}$`,
+                ),
+              );
               continue;
             }
             assert.deepStrictEqual(getInt64(view, 0, mode), expected);
@@ -299,20 +309,55 @@ describe("codec BigInt", () => {
 
       for (const name of Object.keys(specs)) {
         const testCase = specs[name]!;
-  
+
         it(`sets and gets ${testCase.input} (0x${testCase.input.toString(16)})`, () => {
           const b = new Uint8Array(8);
           const view = new DataView(b.buffer);
           view.setBigUint64(0, testCase.input);
           for (const [mode, expected] of testCase.expected) {
             if (expected === "error") {
-              assert.throws(() => getUint64(view, 0, mode), new RegExp(`Mode is IntMode\\.SAFE_NUMBER and value is not a safe integer: 0x${testCase.input.toString(16)}$`));
+              assert.throws(
+                () => getUint64(view, 0, mode),
+                new RegExp(
+                  `Mode is IntMode\\.SAFE_NUMBER and value is not a safe integer: 0x${testCase.input.toString(16)}$`,
+                ),
+              );
               continue;
             }
             assert.deepStrictEqual(getUint64(view, 0, mode), expected);
           }
         });
       }
+    });
+  });
+
+  context("IntMode.AS_ENCODED vs IntMode.Mixed", () => {
+    it("decodes 64-bit integers properly", () => {
+      let input = Uint8Array.from([0xcf, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3]);
+      assert.deepStrictEqual(decode(input, { intMode: IntMode.AS_ENCODED }), BigInt(3));
+      assert.deepStrictEqual(decode(input, { intMode: IntMode.MIXED }), 3);
+
+      input = Uint8Array.from([0xd3, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xf6]);
+      assert.deepStrictEqual(decode(input, { intMode: IntMode.AS_ENCODED }), BigInt(-10));
+      assert.deepStrictEqual(decode(input, { intMode: IntMode.MIXED }), -10);
+
+      input = Uint8Array.from([0xcf, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]);
+      assert.deepStrictEqual(decode(input, { intMode: IntMode.AS_ENCODED }), BigInt("0xffffffffffffffff"));
+      assert.deepStrictEqual(decode(input, { intMode: IntMode.MIXED }), BigInt("0xffffffffffffffff"));
+    });
+
+    it("decodes smaller integers properly", () => {
+      let input = Uint8Array.from([0x03]);
+      assert.deepStrictEqual(decode(input, { intMode: IntMode.AS_ENCODED }), 3);
+      assert.deepStrictEqual(decode(input, { intMode: IntMode.MIXED }), 3);
+
+      input = Uint8Array.from([0xf6]);
+      assert.deepStrictEqual(decode(input, { intMode: IntMode.AS_ENCODED }), -10);
+      assert.deepStrictEqual(decode(input, { intMode: IntMode.MIXED }), -10);
+
+      input = Uint8Array.from([0xce, 0xff, 0xff, 0xff, 0xff]);
+      assert.deepStrictEqual(decode(input, { intMode: IntMode.AS_ENCODED }), 0xffffffff);
+      assert.deepStrictEqual(decode(input, { intMode: IntMode.MIXED }), 0xffffffff);
     });
   });
 });
