@@ -52,7 +52,7 @@ deepStrictEqual(decode(encoded), object);
   - [Reusing Encoder and Decoder instances](#reusing-encoder-and-decoder-instances)
 - [Extension Types](#extension-types)
   - [ExtensionCodec context](#extensioncodec-context)
-  - [Handling BigInt and big numbers](#handling-bigint-and-big-numbers)
+  - [Handling BigInt](#handling-bigint)
   - [The temporal module as timestamp extensions](#the-temporal-module-as-timestamp-extensions)
 - [Decoding a Blob](#decoding-a-blob)
 - [MessagePack Specification](#messagepack-specification)
@@ -368,13 +368,13 @@ const encoded = = encode({myType: new MyType<any>()}, { extensionCodec, context 
 const decoded = decode(encoded, { extensionCodec, context });
 ```
 
-#### Handling BigInt and big numbers
+#### Handling BigInt
 
 **Decoding**
 
-This library does not handle decoding BigInt by default, but you have three options to handle it:
+This library does not handle decoding BigInt by default, but you have three options to decode using BigInt's:
 
-- Set `useBigInt64: true` to decode MessagePack's int64/uint64 into a BigInt
+- Set `useBigInt64: true` to decode MessagePack's `int64`/`uint64` into a BigInt
 - Set `intMode` to exert [greater control](#intmode) over BigInt handling
 - Define a custom `ExtensionCodec` to map bigint to a MessagePack extension type
 

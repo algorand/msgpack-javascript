@@ -14,7 +14,7 @@ export type EncoderOptions<ContextType = undefined> = Partial<
 
     /**
      * Encodes bigint as Int64 or Uint64 if it's set to true, regardless of the size of bigint number.
-     * {@link forceIntegerToFloat} does not affect bigint.
+     * {@link forceIntegerToFloat} does not affect bigint if this is enabled.
      * Depends on ES2020's {@link DataView#setBigInt64} and
      * {@link DataView#setBigUint64}.
      *
