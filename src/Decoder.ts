@@ -28,6 +28,17 @@ export type DecoderOptions<ContextType = undefined> = Readonly<
     intMode?: IntMode;
 
     /**
+     * By default, string values will be decoded as UTF-8 strings. However, if this option is true,
+     * string values will be returned as Uint8Arrays without additional decoding.
+     *
+     * This is useful if the strings may contain invalid UTF-8 sequences.
+     *
+     * Note that this option only applies to string values, not map keys. Additionally, when
+     * enabled, raw string length is limited by the maxBinLength option.
+     */
+    useRawBinaryStrings: boolean;
+
+    /**
      * Maximum string length.
      *
      * Defaults to 4_294_967_295 (UINT32_MAX).
@@ -202,6 +213,7 @@ export class Decoder<ContextType = undefined> {
   private readonly extensionCodec: ExtensionCodecType<ContextType>;
   private readonly context: ContextType;
   private readonly intMode: IntMode;
+  private readonly useRawBinaryStrings: boolean;
   private readonly maxStrLength: number;
   private readonly maxBinLength: number;
   private readonly maxArrayLength: number;
@@ -222,6 +234,7 @@ export class Decoder<ContextType = undefined> {
     this.context = (options as { context: ContextType } | undefined)?.context as ContextType; // needs a type assertion because EncoderOptions has no context property when ContextType is undefined
 
     this.intMode = options?.intMode ?? (options?.useBigInt64 ? IntMode.AS_ENCODED : IntMode.UNSAFE_NUMBER);
+    this.useRawBinaryStrings = options?.useRawBinaryStrings ?? false;
     this.maxStrLength = options?.maxStrLength ?? UINT32_MAX;
     this.maxBinLength = options?.maxBinLength ?? UINT32_MAX;
     this.maxArrayLength = options?.maxArrayLength ?? UINT32_MAX;
@@ -406,7 +419,7 @@ export class Decoder<ContextType = undefined> {
         } else {
           // fixstr (101x xxxx) 0xa0 - 0xbf
           const byteLength = headByte - 0xa0;
-          object = this.decodeUtf8String(byteLength, 0);
+          object = this.decodeString(byteLength, 0);
         }
       } else if (headByte === 0xc0) {
         // nil
@@ -450,15 +463,15 @@ export class Decoder<ContextType = undefined> {
       } else if (headByte === 0xd9) {
         // str 8
         const byteLength = this.lookU8();
-        object = this.decodeUtf8String(byteLength, 1);
+        object = this.decodeString(byteLength, 1);
       } else if (headByte === 0xda) {
         // str 16
         const byteLength = this.lookU16();
-        object = this.decodeUtf8String(byteLength, 2);
+        object = this.decodeString(byteLength, 2);
       } else if (headByte === 0xdb) {
         // str 32
         const byteLength = this.lookU32();
-        object = this.decodeUtf8String(byteLength, 4);
+        object = this.decodeString(byteLength, 4);
       } else if (headByte === 0xdc) {
         // array 16
         const size = this.readU16();
@@ -634,6 +647,13 @@ export class Decoder<ContextType = undefined> {
     }
 
     this.stack.pushArrayState(size);
+  }
+
+  private decodeString(byteLength: number, headerOffset: number): string | Uint8Array {
+    if (!this.useRawBinaryStrings || this.stateIsMapKey()) {
+      return this.decodeUtf8String(byteLength, headerOffset);
+    }
+    return this.decodeBinary(byteLength, headerOffset);
   }
 
   private decodeUtf8String(byteLength: number, headerOffset: number): string {
