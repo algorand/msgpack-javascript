@@ -135,4 +135,181 @@ describe("encode", () => {
       assert.throws(() => encode(MIN_INT64_MINUS_ONE), /Bigint is too small for int64: -9223372036854775809$/);
     }
   });
+
+  context("Map", () => {
+    it("encodes string keys", () => {
+      const m = new Map<string, number>([
+        ["a", 1],
+        ["b", 2],
+      ]);
+      const encoded = encode(m);
+      const expected = Uint8Array.from([130, 161, 97, 1, 161, 98, 2]);
+      assert.deepStrictEqual(encoded, expected);
+    });
+
+    it("encodes number keys", () => {
+      const m = new Map<number, number>([
+        [-9, 1],
+        [1, 2],
+        [2, 3],
+      ]);
+      const encoded = encode(m);
+      const expected = Uint8Array.from([131, 247, 1, 1, 2, 2, 3]);
+      assert.deepStrictEqual(encoded, expected);
+    });
+
+    it("encodes bigint keys", () => {
+      const m = new Map<bigint, number>([
+        [BigInt(-9), 1],
+        [BigInt(1), 2],
+        [BigInt(2), 3],
+      ]);
+      // TODO: error if the same bigint and number is present?
+      const encoded = encode(m);
+      const expected = Uint8Array.from([131, 247, 1, 1, 2, 2, 3]);
+      assert.deepStrictEqual(encoded, expected);
+    });
+
+    it("encodes binary keys", () => {
+      const m = new Map<ArrayBufferLike, number>([
+        [Uint8Array.from([]), 1],
+        [Uint8Array.from([1, 2, 3, 4]), 2],
+        [Int32Array.from([-1, 0, 1234]), 3],
+      ]);
+      const encoded = encode(m);
+      const expected = Uint8Array.from([
+        131, 196, 0, 1, 196, 4, 1, 2, 3, 4, 2, 196, 12, 255, 255, 255, 255, 0, 0, 0, 0, 210, 4, 0, 0, 3,
+      ]);
+      assert.deepStrictEqual(encoded, expected);
+    });
+
+    context("sortKeys", () => {
+      it("cannonicalizes encoded string keys", () => {
+        const m1 = new Map<string, number>([
+          ["a", 1],
+          ["b", 2],
+        ]);
+        const m1Encoded = encode(m1, { sortKeys: true });
+        const m2 = new Map<string, number>([
+          ["b", 2],
+          ["a", 1],
+        ]);
+        const m2Encoded = encode(m2, { sortKeys: true });
+        assert.deepStrictEqual(m1Encoded, m2Encoded);
+
+        const expected = Uint8Array.from([130, 161, 97, 1, 161, 98, 2]);
+        assert.deepStrictEqual(m1Encoded, expected);
+      });
+
+      it("cannonicalizes encoded number keys", () => {
+        const m1 = new Map<number, number>([
+          [-10, 1],
+          [0, 2],
+          [0.5, 3],
+          [100, 4],
+        ]);
+        const m1Encoded = encode(m1, { sortKeys: true });
+        const m2 = new Map<number, number>([
+          [0.5, 3],
+          [100, 4],
+          [0, 2],
+          [-10, 1],
+        ]);
+        const m2Encoded = encode(m2, { sortKeys: true });
+        assert.deepStrictEqual(m1Encoded, m2Encoded);
+        // TODO: test with NaN and Infinity
+        const expected = Uint8Array.from([132, 246, 1, 0, 2, 203, 63, 224, 0, 0, 0, 0, 0, 0, 3, 100, 4]);
+        assert.deepStrictEqual(m1Encoded, expected);
+      });
+
+      it("cannonicalizes encoded bigint keys", () => {
+        const m1 = new Map<bigint, number>([
+          [BigInt(-10), 1],
+          [BigInt(0), 2],
+          [BigInt(100), 3],
+        ]);
+        const m1Encoded = encode(m1, { sortKeys: true });
+        const m2 = new Map<bigint, number>([
+          [BigInt(100), 3],
+          [BigInt(0), 2],
+          [BigInt(-10), 1],
+        ]);
+        const m2Encoded = encode(m2, { sortKeys: true });
+        assert.deepStrictEqual(m1Encoded, m2Encoded);
+
+        const expected = Uint8Array.from([131, 246, 1, 0, 2, 100, 3]);
+        assert.deepStrictEqual(m1Encoded, expected);
+      });
+
+      it("cannonicalizes encoded number and bigint keys", () => {
+        const m1 = new Map<number | bigint, number>([
+          [BigInt(-10), 1],
+          [-9, 2],
+          [BigInt(0), 3],
+          [0.5, 4],
+          [BigInt(100), 5],
+          [BigInt("0xffffffffffffffff"), 6],
+        ]);
+        const m1Encoded = encode(m1, { sortKeys: true });
+        const m2 = new Map<number | bigint, number>([
+          [0.5, 4],
+          [BigInt(100), 5],
+          [-9, 2],
+          [BigInt(0), 3],
+          [BigInt("0xffffffffffffffff"), 6],
+          [BigInt(-10), 1],
+        ]);
+        const m2Encoded = encode(m2, { sortKeys: true });
+        assert.deepStrictEqual(m1Encoded, m2Encoded);
+
+        const expected = Uint8Array.from([
+          134, 246, 1, 247, 2, 0, 3, 203, 63, 224, 0, 0, 0, 0, 0, 0, 4, 100, 5, 207, 255, 255, 255, 255, 255, 255, 255,
+          255, 6,
+        ]);
+        assert.deepStrictEqual(m1Encoded, expected);
+      });
+
+      it("cannonicalizes encoded binary keys", () => {
+        const m1 = new Map<Uint8Array, number>([
+          [Uint8Array.from([1]), 1],
+          [Uint8Array.from([2]), 2],
+        ]);
+        const m1Encoded = encode(m1, { sortKeys: true });
+        const m2 = new Map<Uint8Array, number>([
+          [Uint8Array.from([2]), 2],
+          [Uint8Array.from([1]), 1],
+        ]);
+        const m2Encoded = encode(m2, { sortKeys: true });
+        assert.deepStrictEqual(m1Encoded, m2Encoded);
+
+        const expected = Uint8Array.from([130, 196, 1, 1, 1, 196, 1, 2, 2]);
+        assert.deepStrictEqual(m1Encoded, expected);
+      });
+
+      it("cannonicalizes encoded mixed keys", () => {
+        const m1 = new Map<number | string | Uint8Array, number>([
+          [1, 1],
+          [2, 2],
+          ["a", 3],
+          ["b", 4],
+          [Uint8Array.from([1]), 5],
+          [Uint8Array.from([2]), 6],
+        ]);
+        const m1Encoded = encode(m1, { sortKeys: true });
+        const m2 = new Map<number | string | Uint8Array, number>([
+          ["b", 4],
+          [Uint8Array.from([2]), 6],
+          ["a", 3],
+          [1, 1],
+          [Uint8Array.from([1]), 5],
+          [2, 2],
+        ]);
+        const m2Encoded = encode(m2, { sortKeys: true });
+        assert.deepStrictEqual(m1Encoded, m2Encoded);
+
+        const expected = Uint8Array.from([134, 1, 1, 2, 2, 161, 97, 3, 161, 98, 4, 196, 1, 1, 5, 196, 1, 2, 6]);
+        assert.deepStrictEqual(m1Encoded, expected);
+      });
+    });
+  });
 });

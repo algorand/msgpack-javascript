@@ -31,6 +31,12 @@ describe("decode with useRawBinaryStrings specified", () => {
     assert.deepStrictEqual(actual, expected);
   });
 
+  it("decodes map keys as binary when useMap is enabled", () => {
+    const actual = decode(encode({ key: "foo" }), { ...options, useMap: true });
+    const expected = new Map([[Uint8Array.from([0x6b, 0x65, 0x79]), Uint8Array.from([0x66, 0x6f, 0x6f])]]);
+    assert.deepStrictEqual(actual, expected);
+  });
+
   it("ignores maxStrLength", () => {
     const lengthLimitedOptions = { ...options, maxStrLength: 1 } satisfies DecoderOptions;
 

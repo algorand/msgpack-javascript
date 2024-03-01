@@ -1,7 +1,7 @@
 import { utf8Count, utf8Encode } from "./utils/utf8";
 import { ExtensionCodec, ExtensionCodecType } from "./ExtensionCodec";
 import { setInt64, setUint64 } from "./utils/int";
-import { ensureUint8Array } from "./utils/typedArrays";
+import { ensureUint8Array, compareUint8Arrays } from "./utils/typedArrays";
 import type { ExtData } from "./ExtData";
 import type { ContextOf } from "./context";
 
@@ -321,8 +321,10 @@ export class Encoder<ContextType = undefined> {
       // this is here instead of in doEncode so that we can try encoding with an extension first,
       // otherwise we would break existing extensions for bigints
       this.encodeBigInt(object);
+    } else if (object instanceof Map) {
+      this.encodeMap(object, depth);
     } else if (typeof object === "object") {
-      this.encodeMap(object as Record<string, unknown>, depth);
+      this.encodeMapObject(object as Record<string, unknown>, depth);
     } else {
       // symbol, function and other special object come here unless extensionCodec handles them.
       throw new Error(`Unrecognized object: ${Object.prototype.toString.apply(object)}`);
@@ -371,11 +373,11 @@ export class Encoder<ContextType = undefined> {
     }
   }
 
-  private countWithoutUndefined(object: Record<string, unknown>, keys: ReadonlyArray<string>): number {
+  private countWithoutUndefined(map: Map<unknown, unknown>, keys: ReadonlyArray<unknown>): number {
     let count = 0;
 
     for (const key of keys) {
-      if (object[key] !== undefined) {
+      if (map.get(key) !== undefined) {
         count++;
       }
     }
@@ -383,13 +385,39 @@ export class Encoder<ContextType = undefined> {
     return count;
   }
 
-  private encodeMap(object: Record<string, unknown>, depth: number) {
-    const keys = Object.keys(object);
+  private sortMapKeys(keys: Array<unknown>): Array<unknown> {
+    const numericKeys: Array<number | bigint> = [];
+    const stringKeys: Array<string> = [];
+    const binaryKeys: Array<Uint8Array> = [];
+    for (const key of keys) {
+      if (typeof key === "number" || typeof key === "bigint") {
+        numericKeys.push(key);
+      } else if (typeof key === "string") {
+        stringKeys.push(key);
+      } else if (ArrayBuffer.isView(key)) {
+        binaryKeys.push(ensureUint8Array(key));
+      } else {
+        throw new Error(`Unrecognized map key type: ${Object.prototype.toString.apply(key)}`);
+      }
+    }
+    numericKeys.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)); // Avoid using === to compare numbers and bigints
+    stringKeys.sort();
+    binaryKeys.sort(compareUint8Arrays);
+    // At the moment this arbitrarily orders the keys as numeric, string, binary
+    return (numericKeys as Array<unknown>).concat(stringKeys).concat(binaryKeys);
+  }
+
+  private encodeMapObject(object: Record<string, unknown>, depth: number) {
+    this.encodeMap(new Map<string, unknown>(Object.entries(object)), depth);
+  }
+
+  private encodeMap(map: Map<unknown, unknown>, depth: number) {
+    let keys = Array.from(map.keys());
     if (this.sortKeys) {
-      keys.sort();
+      keys = this.sortMapKeys(keys);
     }
 
-    const size = this.ignoreUndefined ? this.countWithoutUndefined(object, keys) : keys.length;
+    const size = this.ignoreUndefined ? this.countWithoutUndefined(map, keys) : keys.length;
 
     if (size < 16) {
       // fixmap
@@ -407,10 +435,20 @@ export class Encoder<ContextType = undefined> {
     }
 
     for (const key of keys) {
-      const value = object[key];
+      const value = map.get(key);
 
       if (!(this.ignoreUndefined && value === undefined)) {
-        this.encodeString(key);
+        if (typeof key === "string") {
+          this.encodeString(key);
+        } else if (typeof key === "number") {
+          this.encodeNumber(key);
+        } else if (typeof key === "bigint") {
+          this.encodeBigInt(key);
+        } else if (ArrayBuffer.isView(key)) {
+          this.encodeBinary(key);
+        } else {
+          throw new Error(`Unrecognized map key type: ${Object.prototype.toString.apply(key)}`);
+        }
         this.doEncode(value, depth + 1);
       }
     }
