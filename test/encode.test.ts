@@ -164,7 +164,6 @@ describe("encode", () => {
         [BigInt(1), 2],
         [BigInt(2), 3],
       ]);
-      // TODO: error if the same bigint and number is present?
       const encoded = encode(m);
       const expected = Uint8Array.from([131, 247, 1, 1, 2, 2, 3]);
       assert.deepStrictEqual(encoded, expected);
@@ -181,6 +180,27 @@ describe("encode", () => {
         131, 196, 0, 1, 196, 4, 1, 2, 3, 4, 2, 196, 12, 255, 255, 255, 255, 0, 0, 0, 0, 210, 4, 0, 0, 3,
       ]);
       assert.deepStrictEqual(encoded, expected);
+    });
+
+    it("errors on unsupported key types", () => {
+      assert.throws(() => {
+        encode(new Map([[null, 1]]));
+      }, new Error("Unsupported map key type: [object Null]"));
+      assert.throws(() => {
+        encode(new Map([[undefined, 1]]));
+      }, new Error("Unsupported map key type: [object Undefined]"));
+      assert.throws(() => {
+        encode(new Map([[true, 1]]));
+      }, new Error("Unsupported map key type: [object Boolean]"));
+      assert.throws(() => {
+        encode(new Map([[false, 1]]));
+      }, new Error("Unsupported map key type: [object Boolean]"));
+      assert.throws(() => {
+        encode(new Map([[{}, 1]]));
+      }, new Error("Unsupported map key type: [object Object]"));
+      assert.throws(() => {
+        encode(new Map([[[], 1]]));
+      }, new Error("Unsupported map key type: [object Array]"));
     });
 
     context("sortKeys", () => {
@@ -203,23 +223,40 @@ describe("encode", () => {
 
       it("cannonicalizes encoded number keys", () => {
         const m1 = new Map<number, number>([
+          [Number.NEGATIVE_INFINITY, 0],
           [-10, 1],
           [0, 2],
           [0.5, 3],
           [100, 4],
+          [Number.POSITIVE_INFINITY, 5],
         ]);
         const m1Encoded = encode(m1, { sortKeys: true });
         const m2 = new Map<number, number>([
           [0.5, 3],
           [100, 4],
+          [Number.POSITIVE_INFINITY, 5],
           [0, 2],
           [-10, 1],
+          [Number.NEGATIVE_INFINITY, 0],
         ]);
         const m2Encoded = encode(m2, { sortKeys: true });
         assert.deepStrictEqual(m1Encoded, m2Encoded);
-        // TODO: test with NaN and Infinity
-        const expected = Uint8Array.from([132, 246, 1, 0, 2, 203, 63, 224, 0, 0, 0, 0, 0, 0, 3, 100, 4]);
+        const expected = Uint8Array.from([
+          134, 203, 255, 240, 0, 0, 0, 0, 0, 0, 0, 246, 1, 0, 2, 203, 63, 224, 0, 0, 0, 0, 0, 0, 3, 100, 4, 203, 127,
+          240, 0, 0, 0, 0, 0, 0, 5,
+        ]);
         assert.deepStrictEqual(m1Encoded, expected);
+      });
+
+      it("errors in the presence of NaN", () => {
+        const m = new Map<number, number>([
+          [NaN, 1],
+          [0, 2],
+        ]);
+
+        assert.throws(() => {
+          encode(m, { sortKeys: true });
+        }, new Error("Cannot sort map keys with NaN value"));
       });
 
       it("cannonicalizes encoded bigint keys", () => {
@@ -243,19 +280,23 @@ describe("encode", () => {
 
       it("cannonicalizes encoded number and bigint keys", () => {
         const m1 = new Map<number | bigint, number>([
+          [Number.NEGATIVE_INFINITY, 0],
           [BigInt(-10), 1],
           [-9, 2],
           [BigInt(0), 3],
           [0.5, 4],
           [BigInt(100), 5],
           [BigInt("0xffffffffffffffff"), 6],
+          [Number.POSITIVE_INFINITY, 7],
         ]);
         const m1Encoded = encode(m1, { sortKeys: true });
         const m2 = new Map<number | bigint, number>([
           [0.5, 4],
           [BigInt(100), 5],
           [-9, 2],
+          [Number.NEGATIVE_INFINITY, 0],
           [BigInt(0), 3],
+          [Number.POSITIVE_INFINITY, 7],
           [BigInt("0xffffffffffffffff"), 6],
           [BigInt(-10), 1],
         ]);
@@ -263,8 +304,8 @@ describe("encode", () => {
         assert.deepStrictEqual(m1Encoded, m2Encoded);
 
         const expected = Uint8Array.from([
-          134, 246, 1, 247, 2, 0, 3, 203, 63, 224, 0, 0, 0, 0, 0, 0, 4, 100, 5, 207, 255, 255, 255, 255, 255, 255, 255,
-          255, 6,
+          136, 203, 255, 240, 0, 0, 0, 0, 0, 0, 0, 246, 1, 247, 2, 0, 3, 203, 63, 224, 0, 0, 0, 0, 0, 0, 4, 100, 5, 207,
+          255, 255, 255, 255, 255, 255, 255, 255, 6, 203, 127, 240, 0, 0, 0, 0, 0, 0, 7,
         ]);
         assert.deepStrictEqual(m1Encoded, expected);
       });

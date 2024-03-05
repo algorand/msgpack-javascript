@@ -41,6 +41,15 @@ export type EncoderOptions<ContextType = undefined> = Partial<
      * binary is canonical and thus comparable to another encoded binary.
      *
      * Defaults to `false`. If enabled, it spends more time in encoding objects.
+     *
+     * If enabled, the encoder will throw an error if the NaN value is included in the keys of a
+     * map, since it is not comparable.
+     *
+     * If enabled and the keys of a map include multiple different types, each type will be sorted
+     * separately, and the order of the types will be as follows:
+     * 1. Numbers (including bigints)
+     * 2. Strings
+     * 3. Binary data
      */
     sortKeys: boolean;
 
@@ -390,21 +399,26 @@ export class Encoder<ContextType = undefined> {
     const stringKeys: Array<string> = [];
     const binaryKeys: Array<Uint8Array> = [];
     for (const key of keys) {
-      if (typeof key === "number" || typeof key === "bigint") {
+      if (typeof key === "number") {
+        if (isNaN(key)) {
+          throw new Error("Cannot sort map keys with NaN value");
+        }
+        numericKeys.push(key);
+      } else if (typeof key === "bigint") {
         numericKeys.push(key);
       } else if (typeof key === "string") {
         stringKeys.push(key);
       } else if (ArrayBuffer.isView(key)) {
         binaryKeys.push(ensureUint8Array(key));
       } else {
-        throw new Error(`Unrecognized map key type: ${Object.prototype.toString.apply(key)}`);
+        throw new Error(`Unsupported map key type: ${Object.prototype.toString.apply(key)}`);
       }
     }
     numericKeys.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)); // Avoid using === to compare numbers and bigints
     stringKeys.sort();
     binaryKeys.sort(compareUint8Arrays);
     // At the moment this arbitrarily orders the keys as numeric, string, binary
-    return (numericKeys as Array<unknown>).concat(stringKeys).concat(binaryKeys);
+    return ([] as Array<unknown>).concat(numericKeys, stringKeys, binaryKeys);
   }
 
   private encodeMapObject(object: Record<string, unknown>, depth: number) {
@@ -416,6 +430,10 @@ export class Encoder<ContextType = undefined> {
     if (this.sortKeys) {
       keys = this.sortMapKeys(keys);
     }
+
+    // Map keys may encode to the same underlying value. For example, the number 3 and the bigint 3.
+    // This is also possible with ArrayBufferViews. We may want to introduce a new encoding option
+    // which checks for duplicate keys in this sense and throws an error if they are found.
 
     const size = this.ignoreUndefined ? this.countWithoutUndefined(map, keys) : keys.length;
 
@@ -447,7 +465,7 @@ export class Encoder<ContextType = undefined> {
         } else if (ArrayBuffer.isView(key)) {
           this.encodeBinary(key);
         } else {
-          throw new Error(`Unrecognized map key type: ${Object.prototype.toString.apply(key)}`);
+          throw new Error(`Unsupported map key type: ${Object.prototype.toString.apply(key)}`);
         }
         this.doEncode(value, depth + 1);
       }
