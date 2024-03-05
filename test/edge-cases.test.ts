@@ -1,7 +1,7 @@
 // kind of hand-written fuzzing data
 // any errors should not break Encoder/Decoder instance states
 import assert from "assert";
-import { encode, decodeAsync, decode, Encoder, Decoder, decodeMulti, decodeMultiStream } from "../src";
+import { encode, decodeAsync, decode, Encoder, Decoder, decodeMulti, decodeMultiStream, DecodeError } from "../src";
 import { DataViewIndexOutOfBoundsError } from "../src/Decoder";
 
 function testEncoder(encoder: Encoder): void {
@@ -52,6 +52,22 @@ describe("edge cases", () => {
         encode(() => {});
       }, /unrecognized object/i);
       testEncoder(encoder);
+    });
+  });
+
+  context("numeric map keys", () => {
+    const input = encode(new Map([[0, 1]]));
+
+    it("throws error by default", () => {
+      assert.throws(() => decode(input), new DecodeError("The type of key must be string but got number"));
+    });
+
+    it("succeeds with supportObjectNumberKeys", () => {
+      // note: useMap is the preferred way to decode maps with non-string keys.
+      // supportObjectNumberKeys is only for backward compatibility
+      const actual = decode(input, { supportObjectNumberKeys: true });
+      const expected = { "0": 1 };
+      assert.deepStrictEqual(actual, expected);
     });
   });
 
