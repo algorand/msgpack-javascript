@@ -58,8 +58,9 @@ export type DecoderOptions<ContextType = undefined> = Readonly<
      * objects. Defaults to false.
      *
      * Besides the type of container, the main difference is that Map objects support a wider range
-     * of key types. Plain objects only support string keys, while Map objects support strings,
-     * numbers, bigints, and Uint8Arrays.
+     * of key types. Plain objects only support string keys (though you can enable
+     * `supportObjectNumberKeys` to coerce number keys to strings), while Map objects support
+     * strings, numbers, bigints, and Uint8Arrays.
      */
     useMap: boolean;
 
