@@ -1,8 +1,8 @@
 {
-  "name": "@msgpack/msgpack",
+  "name": "algorand-msgpack",
   "version": "3.0.0-beta2",
   "description": "MessagePack for ECMA-262/JavaScript/TypeScript",
-  "author": "The MessagePack community",
+  "author": "Algorand Technologies & the MessagePack community",
   "license": "ISC",
   "main": "./dist/index.js",
   "module": "./dist.es5+esm/index.mjs",
@@ -35,10 +35,10 @@
   "homepage": "https://msgpack.org/",
   "repository": {
     "type": "git",
-    "url": "https://github.com/msgpack/msgpack-javascript.git"
+    "url": "https://github.com/algorand/msgpack-javascript.git"
   },
   "bugs": {
-    "url": "https://github.com/msgpack/msgpack-javascript/issues"
+    "url": "https://github.com/algorand/msgpack-javascript/issues"
   },
   "keywords": [
     "msgpack",

@@ -2,6 +2,14 @@
 
 [![npm version](https://img.shields.io/npm/v/@msgpack/msgpack.svg)](https://www.npmjs.com/package/@msgpack/msgpack) ![CI](https://github.com/msgpack/msgpack-javascript/workflows/CI/badge.svg) [![codecov](https://codecov.io/gh/msgpack/msgpack-javascript/branch/master/graphs/badge.svg)](https://codecov.io/gh/msgpack/msgpack-javascript) [![minzip](https://badgen.net/bundlephobia/minzip/@msgpack/msgpack)](https://bundlephobia.com/result?p=@msgpack/msgpack) [![tree-shaking](https://badgen.net/bundlephobia/tree-shaking/@msgpack/msgpack)](https://bundlephobia.com/result?p=@msgpack/msgpack)
 
+> NOTE: This library is a fork of [msgpack/msgpack-javascript](https://github.com/msgpack/msgpack-javascript), with the following changes:
+>
+> - Improved bigint support. Bigints are no longer solely encoded as int64/uint64, which allows for greater compatibility with other MessagePack libraries. Additional decoding options are available as well.
+> - Raw string decoding support. When decoding, strings can be decoded as Uint8Arrays. This supports reading non-UTF-8 encoded strings.
+> - Number and binary map key support with Maps.
+>
+> The exact changes can be viewed [in this comparison](https://github.com/msgpack/msgpack-javascript/compare/1fc7622...algorand:msgpack-javascript:main).
+
 This library is an implementation of **MessagePack** for TypeScript and JavaScript, providing a compact and efficient binary serialization format. Learn more about MessagePack at:
 
 https://msgpack.org/
@@ -115,15 +123,12 @@ console.log(buffer);
 | extensionCodec      | ExtensionCodec | `ExtensionCodec.defaultCodec` |
 | context             | user-defined   | -                             |
 | forceBigIntToInt64  | boolean        | false                         |
-| useRawBinaryStrings | boolean        | false                         |
 | maxDepth            | number         | `100`                         |
 | initialBufferSize   | number         | `2048`                        |
 | sortKeys            | boolean        | false                         |
 | forceFloat32        | boolean        | false                         |
 | forceIntegerToFloat | boolean        | false                         |
 | ignoreUndefined     | boolean        | false                         |
-
-To skip UTF-8 decoding of strings, `useRawBinaryStrings` can be set to `true`. In this case, strings are decoded into `Uint8Array`.
 
 ### `decode(buffer: ArrayLike<number> | BufferSource, options?: DecoderOptions): unknown`
 
@@ -147,21 +152,29 @@ NodeJS `Buffer` is also acceptable because it is a subclass of `Uint8Array`.
 
 #### `DecoderOptions`
 
-| Name           | Type           | Default                                                                              |
-| -------------- | -------------- | ------------------------------------------------------------------------------------ |
-| extensionCodec | ExtensionCodec | `ExtensionCodec.defaultCodec`                                                        |
-| context        | user-defined   | -                                                                                    |
-| useBigInt64    | boolean        | false                                                                                |
-| intMode        | IntMode        | `IntMode.AS_ENCODED` if `useBigInt64` is `true` or `IntMode.UNSAFE_NUMBER` otherwise |
-| maxStrLength   | number         | `4_294_967_295` (UINT32_MAX)                                                         |
-| maxBinLength   | number         | `4_294_967_295` (UINT32_MAX)                                                         |
-| maxArrayLength | number         | `4_294_967_295` (UINT32_MAX)                                                         |
-| maxMapLength   | number         | `4_294_967_295` (UINT32_MAX)                                                         |
-| maxExtLength   | number         | `4_294_967_295` (UINT32_MAX)                                                         |
+| Name                    | Type           | Default                                                                              |
+| ----------------------- | -------------- | ------------------------------------------------------------------------------------ |
+| extensionCodec          | ExtensionCodec | `ExtensionCodec.defaultCodec`                                                        |
+| context                 | user-defined   | -                                                                                    |
+| useBigInt64             | boolean        | false                                                                                |
+| intMode                 | IntMode        | `IntMode.AS_ENCODED` if `useBigInt64` is `true` or `IntMode.UNSAFE_NUMBER` otherwise |
+| rawBinaryStringKeys     | boolean        | false                                                                                |
+| rawBinaryStringValues   | boolean        | false                                                                                |
+| useMap                  | boolean        | false                                                                                |
+| supportObjectNumberKeys | boolean        | false                                                                                |
+| maxStrLength            | number         | `4_294_967_295` (UINT32_MAX)                                                         |
+| maxBinLength            | number         | `4_294_967_295` (UINT32_MAX)                                                         |
+| maxArrayLength          | number         | `4_294_967_295` (UINT32_MAX)                                                         |
+| maxMapLength            | number         | `4_294_967_295` (UINT32_MAX)                                                         |
+| maxExtLength            | number         | `4_294_967_295` (UINT32_MAX)                                                         |
 
 You can use `max${Type}Length` to limit the length of each type decoded.
 
 `intMode` determines whether decoded integers should be returned as numbers or bigints in different circumstances. The possible values are [described below](#intmode).
+
+To skip UTF-8 decoding of strings, one or both of `rawBinaryStringKeys` and `rawBinaryStringValues` can be set to `true`. If enabled, strings are decoded into `Uint8Array`. `rawBinaryStringKeys` affects only map keys, while `rawBinaryStringValues` affect all other string values.
+
+If `useMap` is enabled, maps are decoded into the `Map` container instead of plain objects. `Map` objects support a wider range of key types. Plain objects only support string keys (though you can enable `supportObjectNumberKeys` to coerce number keys to strings), while `Map` objects support strings, numbers, bigints, and Uint8Arrays.
 
 ##### `IntMode`
 
@@ -532,12 +545,12 @@ The mapping of integers varies on the setting of `intMode`.
 | Date                  | timestamp ext family | Date (\*6)             |
 | bigint                | int family           | bigint                 |
 
-* \*1 Both `null` and `undefined` are mapped to `nil` (`0xC0`) type, and are decoded into `null`
-* \*2 MessagePack ints are decoded as either numbers or bigints depending on the [IntMode](#intmode) used during decoding.
-* \*3 If you'd like to skip UTF-8 decoding of strings, set `useRawBinaryStrings: true`. In this case, strings are decoded into `Uint8Array`.
-* \*4 Any `ArrayBufferView`s including NodeJS's `Buffer` are mapped to `bin` family, and are decoded into `Uint8Array`
-* \*5 In handling `Object`, it is regarded as `Record<string, unknown>` in terms of TypeScript
-* \*6 MessagePack timestamps may have nanoseconds, which will lost when it is decoded into JavaScript `Date`. This behavior can be overridden by registering `-1` for the extension codec.
+- \*1 Both `null` and `undefined` are mapped to `nil` (`0xC0`) type, and are decoded into `null`
+- \*2 MessagePack ints are decoded as either numbers or bigints depending on the [IntMode](#intmode) used during decoding.
+- \*3 If you'd like to skip UTF-8 decoding of strings, enable one of `rawBinaryStringKeys` or `rawBinaryStringValues`. In that case, strings are decoded into `Uint8Array`.
+- \*4 Any `ArrayBufferView`s including NodeJS's `Buffer` are mapped to `bin` family, and are decoded into `Uint8Array`
+- \*5 In handling `Object`, it is regarded as `Record<string, unknown>` in terms of TypeScript
+- \*6 MessagePack timestamps may have nanoseconds, which will lost when it is decoded into JavaScript `Date`. This behavior can be overridden by registering `-1` for the extension codec.
 
 If you set `useBigInt64: true`, the following mapping is used:
 
@@ -554,9 +567,10 @@ If you set `useBigInt64: true`, the following mapping is used:
 | Object                            | map family           | Object                |
 | Date                              | timestamp ext family | Date                  |
 
-* \*6 If the bigint is larger than the max value of uint64 or smaller than the min value of int64, then the behavior is undefined.
+- \*6 If the bigint is larger than the max value of uint64 or smaller than the min value of int64, then the behavior is undefined.
 
-* \*7 If the bigint is larger than the max value of uint64 or smaller than the min value of int64, then the behavior is undefined.
+- \*7 If the bigint is larger than the max value of uint64 or smaller than the min value of int64, then the behavior is undefined.
+
 ## Prerequisites
 
 This is a universal JavaScript library that supports major browsers and NodeJS.
