@@ -33,10 +33,50 @@ export type DecoderOptions<ContextType = undefined> = Readonly<
      *
      * This is useful if the strings may contain invalid UTF-8 sequences.
      *
-     * Note that this option only applies to string values, not map keys. Additionally, when
-     * enabled, raw string length is limited by the maxBinLength option.
+     * When enabled, raw string length is limited by the maxBinLength option.
+     *
+     * Note that this option only applies to string values, not map keys. See `rawBinaryStringKeys`
+     * for map keys.
      */
-    useRawBinaryStrings: boolean;
+    rawBinaryStringValues: boolean;
+
+    /**
+     * By default, map keys will be decoded as UTF-8 strings. However, if this option is true, map
+     * keys will be returned as Uint8Arrays without additional decoding.
+     *
+     * Requires `useMap` to be true, since plain objects do not support binary keys.
+     *
+     * When enabled, raw string length is limited by the maxBinLength option.
+     *
+     * Note that this option only applies to map keys, not string values. See `rawBinaryStringValues`
+     * for string values.
+     */
+    rawBinaryStringKeys: boolean;
+
+    /**
+     * If true, the decoder will use the Map object to store map values. If false, it will use plain
+     * objects. Defaults to false.
+     *
+     * Besides the type of container, the main difference is that Map objects support a wider range
+     * of key types. Plain objects only support string keys (though you can enable
+     * `supportObjectNumberKeys` to coerce number keys to strings), while Map objects support
+     * strings, numbers, bigints, and Uint8Arrays.
+     */
+    useMap: boolean;
+
+    /**
+     * If true, the decoder will support decoding numbers as map keys on plain objects. Defaults to
+     * false.
+     *
+     * Note that any numbers used as object keys will be converted to strings, so there is a risk of
+     * key collision as well as the inability to re-encode the object to the same representation.
+     *
+     * This option is ignored if `useMap` is true.
+     *
+     * This is useful for backwards compatibility before `useMap` was introduced. Consider instead
+     * using `useMap` for new code.
+     */
+    supportObjectNumberKeys: boolean;
 
     /**
      * Maximum string length.
@@ -82,18 +122,22 @@ const STATE_ARRAY = "array";
 const STATE_MAP_KEY = "map_key";
 const STATE_MAP_VALUE = "map_value";
 
-type MapKeyType = string | number;
+type MapKeyType = string | number | bigint | Uint8Array;
 
-const isValidMapKeyType = (key: unknown): key is MapKeyType => {
-  return typeof key === "string" || typeof key === "number";
-};
+function isValidMapKeyType(key: unknown, useMap: boolean, supportObjectNumberKeys: boolean): key is MapKeyType {
+  if (useMap) {
+    return typeof key === "string" || typeof key === "number" || typeof key === "bigint" || key instanceof Uint8Array;
+  }
+  // Plain objects support a more limited set of key types
+  return typeof key === "string" || (supportObjectNumberKeys && typeof key === "number");
+}
 
 type StackMapState = {
   type: typeof STATE_MAP_KEY | typeof STATE_MAP_VALUE;
   size: number;
   key: MapKeyType | null;
   readCount: number;
-  map: Record<string, unknown>;
+  map: Record<string, unknown> | Map<MapKeyType, unknown>;
 };
 
 type StackArrayState = {
@@ -106,6 +150,8 @@ type StackArrayState = {
 class StackPool {
   private readonly stack: Array<StackState> = [];
   private stackHeadPosition = -1;
+
+  constructor(private readonly useMap: boolean) {}
 
   public get length(): number {
     return this.stackHeadPosition + 1;
@@ -130,7 +176,7 @@ class StackPool {
     state.type = STATE_MAP_KEY;
     state.readCount = 0;
     state.size = size;
-    state.map = {};
+    state.map = this.useMap ? new Map() : {};
   }
 
   private getUninitializedStateFromPool() {
@@ -213,7 +259,10 @@ export class Decoder<ContextType = undefined> {
   private readonly extensionCodec: ExtensionCodecType<ContextType>;
   private readonly context: ContextType;
   private readonly intMode: IntMode;
-  private readonly useRawBinaryStrings: boolean;
+  private readonly rawBinaryStringValues: boolean;
+  private readonly rawBinaryStringKeys: boolean;
+  private readonly useMap: boolean;
+  private readonly supportObjectNumberKeys: boolean;
   private readonly maxStrLength: number;
   private readonly maxBinLength: number;
   private readonly maxArrayLength: number;
@@ -227,20 +276,29 @@ export class Decoder<ContextType = undefined> {
   private view = EMPTY_VIEW;
   private bytes = EMPTY_BYTES;
   private headByte = HEAD_BYTE_REQUIRED;
-  private readonly stack = new StackPool();
+  private readonly stack: StackPool;
 
   public constructor(options?: DecoderOptions<ContextType>) {
     this.extensionCodec = options?.extensionCodec ?? (ExtensionCodec.defaultCodec as ExtensionCodecType<ContextType>);
     this.context = (options as { context: ContextType } | undefined)?.context as ContextType; // needs a type assertion because EncoderOptions has no context property when ContextType is undefined
 
     this.intMode = options?.intMode ?? (options?.useBigInt64 ? IntMode.AS_ENCODED : IntMode.UNSAFE_NUMBER);
-    this.useRawBinaryStrings = options?.useRawBinaryStrings ?? false;
+    this.rawBinaryStringValues = options?.rawBinaryStringValues ?? false;
+    this.rawBinaryStringKeys = options?.rawBinaryStringKeys ?? false;
+    this.useMap = options?.useMap ?? false;
+    this.supportObjectNumberKeys = options?.supportObjectNumberKeys ?? false;
     this.maxStrLength = options?.maxStrLength ?? UINT32_MAX;
     this.maxBinLength = options?.maxBinLength ?? UINT32_MAX;
     this.maxArrayLength = options?.maxArrayLength ?? UINT32_MAX;
     this.maxMapLength = options?.maxMapLength ?? UINT32_MAX;
     this.maxExtLength = options?.maxExtLength ?? UINT32_MAX;
     this.keyDecoder = options?.keyDecoder !== undefined ? options.keyDecoder : sharedCachedKeyDecoder;
+
+    if (this.rawBinaryStringKeys && !this.useMap) {
+      throw new Error("rawBinaryStringKeys is only supported when useMap is true");
+    }
+
+    this.stack = new StackPool(this.useMap);
   }
 
   private reinitializeState() {
@@ -404,7 +462,7 @@ export class Decoder<ContextType = undefined> {
             this.complete();
             continue DECODE;
           } else {
-            object = {};
+            object = this.useMap ? new Map() : {};
           }
         } else if (headByte < 0xa0) {
           // fixarray (1001 xxxx) 0x90 - 0x9f
@@ -571,10 +629,15 @@ export class Decoder<ContextType = undefined> {
             continue DECODE;
           }
         } else if (state.type === STATE_MAP_KEY) {
-          if (!isValidMapKeyType(object)) {
-            throw new DecodeError("The type of key must be string or number but " + typeof object);
+          if (!isValidMapKeyType(object, this.useMap, this.supportObjectNumberKeys)) {
+            const acceptableTypes = this.useMap
+              ? "string, number, bigint, or Uint8Array"
+              : this.supportObjectNumberKeys
+              ? "string or number"
+              : "string";
+            throw new DecodeError(`The type of key must be ${acceptableTypes} but got ${typeof object}`);
           }
-          if (object === "__proto__") {
+          if (!this.useMap && object === "__proto__") {
             throw new DecodeError("The key __proto__ is not allowed");
           }
 
@@ -584,7 +647,11 @@ export class Decoder<ContextType = undefined> {
         } else {
           // it must be `state.type === State.MAP_VALUE` here
 
-          state.map[state.key!] = object;
+          if (this.useMap) {
+            (state.map as Map<MapKeyType, unknown>).set(state.key!, object);
+          } else {
+            (state.map as Record<string, unknown>)[state.key as string] = object;
+          }
           state.readCount++;
 
           if (state.readCount === state.size) {
@@ -650,10 +717,10 @@ export class Decoder<ContextType = undefined> {
   }
 
   private decodeString(byteLength: number, headerOffset: number): string | Uint8Array {
-    if (!this.useRawBinaryStrings || this.stateIsMapKey()) {
-      return this.decodeUtf8String(byteLength, headerOffset);
+    if (this.stateIsMapKey() ? this.rawBinaryStringKeys : this.rawBinaryStringValues) {
+      return this.decodeBinary(byteLength, headerOffset);
     }
-    return this.decodeBinary(byteLength, headerOffset);
+    return this.decodeUtf8String(byteLength, headerOffset);
   }
 
   private decodeUtf8String(byteLength: number, headerOffset: number): string {

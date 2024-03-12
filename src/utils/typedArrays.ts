@@ -19,3 +19,14 @@ export function createDataView(buffer: ArrayLike<number> | ArrayBufferView | Arr
   const bufferView = ensureUint8Array(buffer);
   return new DataView(bufferView.buffer, bufferView.byteOffset, bufferView.byteLength);
 }
+
+export function compareUint8Arrays(a: Uint8Array, b: Uint8Array): number {
+  const length = Math.min(a.length, b.length);
+  for (let i = 0; i < length; i++) {
+    const diff = a[i]! - b[i]!;
+    if (diff !== 0) {
+      return diff;
+    }
+  }
+  return a.length - b.length;
+}

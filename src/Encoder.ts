@@ -1,7 +1,7 @@
 import { utf8Count, utf8Encode } from "./utils/utf8";
 import { ExtensionCodec, ExtensionCodecType } from "./ExtensionCodec";
 import { setInt64, setUint64 } from "./utils/int";
-import { ensureUint8Array } from "./utils/typedArrays";
+import { ensureUint8Array, compareUint8Arrays } from "./utils/typedArrays";
 import type { ExtData } from "./ExtData";
 import type { ContextOf } from "./context";
 
@@ -41,6 +41,15 @@ export type EncoderOptions<ContextType = undefined> = Partial<
      * binary is canonical and thus comparable to another encoded binary.
      *
      * Defaults to `false`. If enabled, it spends more time in encoding objects.
+     *
+     * If enabled, the encoder will throw an error if the NaN value is included in the keys of a
+     * map, since it is not comparable.
+     *
+     * If enabled and the keys of a map include multiple different types, each type will be sorted
+     * separately, and the order of the types will be as follows:
+     * 1. Numbers (including bigints)
+     * 2. Strings
+     * 3. Binary data
      */
     sortKeys: boolean;
 
@@ -321,8 +330,10 @@ export class Encoder<ContextType = undefined> {
       // this is here instead of in doEncode so that we can try encoding with an extension first,
       // otherwise we would break existing extensions for bigints
       this.encodeBigInt(object);
+    } else if (object instanceof Map) {
+      this.encodeMap(object, depth);
     } else if (typeof object === "object") {
-      this.encodeMap(object as Record<string, unknown>, depth);
+      this.encodeMapObject(object as Record<string, unknown>, depth);
     } else {
       // symbol, function and other special object come here unless extensionCodec handles them.
       throw new Error(`Unrecognized object: ${Object.prototype.toString.apply(object)}`);
@@ -371,11 +382,11 @@ export class Encoder<ContextType = undefined> {
     }
   }
 
-  private countWithoutUndefined(object: Record<string, unknown>, keys: ReadonlyArray<string>): number {
+  private countWithoutUndefined(map: Map<unknown, unknown>, keys: ReadonlyArray<unknown>): number {
     let count = 0;
 
     for (const key of keys) {
-      if (object[key] !== undefined) {
+      if (map.get(key) !== undefined) {
         count++;
       }
     }
@@ -383,13 +394,48 @@ export class Encoder<ContextType = undefined> {
     return count;
   }
 
-  private encodeMap(object: Record<string, unknown>, depth: number) {
-    const keys = Object.keys(object);
+  private sortMapKeys(keys: Array<unknown>): Array<unknown> {
+    const numericKeys: Array<number | bigint> = [];
+    const stringKeys: Array<string> = [];
+    const binaryKeys: Array<Uint8Array> = [];
+    for (const key of keys) {
+      if (typeof key === "number") {
+        if (isNaN(key)) {
+          throw new Error("Cannot sort map keys with NaN value");
+        }
+        numericKeys.push(key);
+      } else if (typeof key === "bigint") {
+        numericKeys.push(key);
+      } else if (typeof key === "string") {
+        stringKeys.push(key);
+      } else if (ArrayBuffer.isView(key)) {
+        binaryKeys.push(ensureUint8Array(key));
+      } else {
+        throw new Error(`Unsupported map key type: ${Object.prototype.toString.apply(key)}`);
+      }
+    }
+    numericKeys.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)); // Avoid using === to compare numbers and bigints
+    stringKeys.sort();
+    binaryKeys.sort(compareUint8Arrays);
+    // At the moment this arbitrarily orders the keys as numeric, string, binary
+    return ([] as Array<unknown>).concat(numericKeys, stringKeys, binaryKeys);
+  }
+
+  private encodeMapObject(object: Record<string, unknown>, depth: number) {
+    this.encodeMap(new Map<string, unknown>(Object.entries(object)), depth);
+  }
+
+  private encodeMap(map: Map<unknown, unknown>, depth: number) {
+    let keys = Array.from(map.keys());
     if (this.sortKeys) {
-      keys.sort();
+      keys = this.sortMapKeys(keys);
     }
 
-    const size = this.ignoreUndefined ? this.countWithoutUndefined(object, keys) : keys.length;
+    // Map keys may encode to the same underlying value. For example, the number 3 and the bigint 3.
+    // This is also possible with ArrayBufferViews. We may want to introduce a new encoding option
+    // which checks for duplicate keys in this sense and throws an error if they are found.
+
+    const size = this.ignoreUndefined ? this.countWithoutUndefined(map, keys) : keys.length;
 
     if (size < 16) {
       // fixmap
@@ -407,10 +453,20 @@ export class Encoder<ContextType = undefined> {
     }
 
     for (const key of keys) {
-      const value = object[key];
+      const value = map.get(key);
 
       if (!(this.ignoreUndefined && value === undefined)) {
-        this.encodeString(key);
+        if (typeof key === "string") {
+          this.encodeString(key);
+        } else if (typeof key === "number") {
+          this.encodeNumber(key);
+        } else if (typeof key === "bigint") {
+          this.encodeBigInt(key);
+        } else if (ArrayBuffer.isView(key)) {
+          this.encodeBinary(key);
+        } else {
+          throw new Error(`Unsupported map key type: ${Object.prototype.toString.apply(key)}`);
+        }
         this.doEncode(value, depth + 1);
       }
     }

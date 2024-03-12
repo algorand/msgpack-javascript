@@ -253,24 +253,24 @@ describe("codec BigInt", () => {
       const encoded = encode(value, { extensionCodec });
       assert.deepStrictEqual(decode(encoded, { extensionCodec }), value);
     });
-  });
 
-  it("encodes and decodes 100n", () => {
-    const value = BigInt(100);
-    const encoded = encode(value, { extensionCodec });
-    assert.deepStrictEqual(decode(encoded, { extensionCodec }), value);
-  });
+    it("encodes and decodes 100n", () => {
+      const value = BigInt(100);
+      const encoded = encode(value, { extensionCodec });
+      assert.deepStrictEqual(decode(encoded, { extensionCodec }), value);
+    });
 
-  it("encodes and decodes -100n", () => {
-    const value = BigInt(-100);
-    const encoded = encode(value, { extensionCodec });
-    assert.deepStrictEqual(decode(encoded, { extensionCodec }), value);
-  });
+    it("encodes and decodes -100n", () => {
+      const value = BigInt(-100);
+      const encoded = encode(value, { extensionCodec });
+      assert.deepStrictEqual(decode(encoded, { extensionCodec }), value);
+    });
 
-  it("encodes and decodes MAX_SAFE_INTEGER+1", () => {
-    const value = BigInt(Number.MAX_SAFE_INTEGER) + BigInt(1);
-    const encoded = encode(value, { extensionCodec });
-    assert.deepStrictEqual(decode(encoded, { extensionCodec }), value);
+    it("encodes and decodes MAX_SAFE_INTEGER+1", () => {
+      const value = BigInt(Number.MAX_SAFE_INTEGER) + BigInt(1);
+      const encoded = encode(value, { extensionCodec });
+      assert.deepStrictEqual(decode(encoded, { extensionCodec }), value);
+    });
   });
 
   context("native", () => {
