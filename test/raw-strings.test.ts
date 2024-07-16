@@ -1,6 +1,43 @@
 import assert from "assert";
-import { encode, decode } from "../src";
+import { encode, decode, RawBinaryString } from "../src";
 import type { DecoderOptions } from "../src";
+
+const invalidUtf8String = Uint8Array.from([
+  61, 180, 118, 220, 39, 166, 43, 68, 219, 116, 105, 84, 121, 46, 122, 136, 233, 221, 15, 174, 247, 19, 50, 176, 184,
+  221, 66, 188, 171, 36, 135, 121,
+]);
+
+describe("encode with RawBinaryString", () => {
+  it("encodes a RawBinaryString value as a string", () => {
+    const actual = encode(new RawBinaryString(Uint8Array.from([0x66, 0x6f, 0x6f])));
+    const expected = encode("foo");
+    assert.deepStrictEqual(actual, expected);
+  });
+
+  it("encodes an invalid UTF-8 RawBinaryString value as a string", () => {
+    const actual = encode(new RawBinaryString(invalidUtf8String));
+    const expected = Uint8Array.from([
+      217, 32, 61, 180, 118, 220, 39, 166, 43, 68, 219, 116, 105, 84, 121, 46, 122, 136, 233, 221, 15, 174, 247, 19, 50,
+      176, 184, 221, 66, 188, 171, 36, 135, 121,
+    ]);
+    assert.deepStrictEqual(actual, expected);
+  });
+
+  it("encodes a RawBinaryString map key as a string", () => {
+    const actual = encode(new Map([[new RawBinaryString(Uint8Array.from([0x6b, 0x65, 0x79])), "foo"]]));
+    const expected = encode({ key: "foo" });
+    assert.deepStrictEqual(actual, expected);
+  });
+
+  it("encodes an invalid UTF-8 RawBinaryString map key as a string", () => {
+    const actual = encode(new Map([[new RawBinaryString(invalidUtf8String), "abc"]]));
+    const expected = Uint8Array.from([
+      129, 217, 32, 61, 180, 118, 220, 39, 166, 43, 68, 219, 116, 105, 84, 121, 46, 122, 136, 233, 221, 15, 174, 247,
+      19, 50, 176, 184, 221, 66, 188, 171, 36, 135, 121, 163, 97, 98, 99,
+    ]);
+    assert.deepStrictEqual(actual, expected);
+  });
+});
 
 describe("decode with rawBinaryStringValues specified", () => {
   const options = { rawBinaryStringValues: true } satisfies DecoderOptions;
@@ -12,12 +49,8 @@ describe("decode with rawBinaryStringValues specified", () => {
   });
 
   it("decodes invalid UTF-8 string values as binary", () => {
-    const invalidUtf8String = Uint8Array.from([
-      61, 180, 118, 220, 39, 166, 43, 68, 219, 116, 105, 84, 121, 46, 122, 136, 233, 221, 15, 174, 247, 19, 50, 176,
-      184, 221, 66, 188, 171, 36, 135, 121,
-    ]);
     const encoded = Uint8Array.from([
-      196, 32, 61, 180, 118, 220, 39, 166, 43, 68, 219, 116, 105, 84, 121, 46, 122, 136, 233, 221, 15, 174, 247, 19, 50,
+      217, 32, 61, 180, 118, 220, 39, 166, 43, 68, 219, 116, 105, 84, 121, 46, 122, 136, 233, 221, 15, 174, 247, 19, 50,
       176, 184, 221, 66, 188, 171, 36, 135, 121,
     ]);
 
@@ -64,10 +97,6 @@ describe("decode with rawBinaryStringKeys specified", () => {
   });
 
   it("decodes invalid UTF-8 string keys as binary", () => {
-    const invalidUtf8String = Uint8Array.from([
-      61, 180, 118, 220, 39, 166, 43, 68, 219, 116, 105, 84, 121, 46, 122, 136, 233, 221, 15, 174, 247, 19, 50, 176,
-      184, 221, 66, 188, 171, 36, 135, 121,
-    ]);
     const encodedMap = Uint8Array.from([
       129, 217, 32, 61, 180, 118, 220, 39, 166, 43, 68, 219, 116, 105, 84, 121, 46, 122, 136, 233, 221, 15, 174, 247,
       19, 50, 176, 184, 221, 66, 188, 171, 36, 135, 121, 163, 97, 98, 99,
