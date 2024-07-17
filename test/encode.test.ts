@@ -1,5 +1,5 @@
 import assert from "assert";
-import { encode, decode } from "@msgpack/msgpack";
+import { encode, decode, RawBinaryString } from "@msgpack/msgpack";
 
 describe("encode", () => {
   context("sortKeys", () => {
@@ -141,6 +141,16 @@ describe("encode", () => {
       const m = new Map<string, number>([
         ["a", 1],
         ["b", 2],
+      ]);
+      const encoded = encode(m);
+      const expected = Uint8Array.from([130, 161, 97, 1, 161, 98, 2]);
+      assert.deepStrictEqual(encoded, expected);
+    });
+
+    it("encodes raw string keys", () => {
+      const m = new Map<RawBinaryString, number>([
+        [new RawBinaryString(Uint8Array.from([97])), 1],
+        [new RawBinaryString(Uint8Array.from([98])), 2],
       ]);
       const encoded = encode(m);
       const expected = Uint8Array.from([130, 161, 97, 1, 161, 98, 2]);
@@ -327,28 +337,51 @@ describe("encode", () => {
         assert.deepStrictEqual(m1Encoded, expected);
       });
 
+      it("cannonicalizes encoded raw string keys", () => {
+        const m1 = new Map<RawBinaryString, number>([
+          [new RawBinaryString(Uint8Array.from([1])), 1],
+          [new RawBinaryString(Uint8Array.from([2])), 2],
+        ]);
+        const m1Encoded = encode(m1, { sortKeys: true });
+        const m2 = new Map<RawBinaryString, number>([
+          [new RawBinaryString(Uint8Array.from([2])), 2],
+          [new RawBinaryString(Uint8Array.from([1])), 1],
+        ]);
+        const m2Encoded = encode(m2, { sortKeys: true });
+        assert.deepStrictEqual(m1Encoded, m2Encoded);
+
+        const expected = Uint8Array.from([130, 161, 1, 1, 161, 2, 2]);
+        assert.deepStrictEqual(m1Encoded, expected);
+      });
+
       it("cannonicalizes encoded mixed keys", () => {
-        const m1 = new Map<number | string | Uint8Array, number>([
+        const m1 = new Map<number | string | Uint8Array | RawBinaryString, number>([
           [1, 1],
           [2, 2],
           ["a", 3],
           ["b", 4],
-          [Uint8Array.from([1]), 5],
-          [Uint8Array.from([2]), 6],
+          [new RawBinaryString(Uint8Array.from([0])), 5],
+          [new RawBinaryString(Uint8Array.from([100])), 6],
+          [Uint8Array.from([1]), 7],
+          [Uint8Array.from([2]), 8],
         ]);
         const m1Encoded = encode(m1, { sortKeys: true });
-        const m2 = new Map<number | string | Uint8Array, number>([
+        const m2 = new Map<number | string | Uint8Array | RawBinaryString, number>([
+          [new RawBinaryString(Uint8Array.from([0])), 5],
           ["b", 4],
-          [Uint8Array.from([2]), 6],
+          [Uint8Array.from([2]), 8],
           ["a", 3],
           [1, 1],
-          [Uint8Array.from([1]), 5],
+          [Uint8Array.from([1]), 7],
+          [new RawBinaryString(Uint8Array.from([100])), 6],
           [2, 2],
         ]);
         const m2Encoded = encode(m2, { sortKeys: true });
         assert.deepStrictEqual(m1Encoded, m2Encoded);
 
-        const expected = Uint8Array.from([134, 1, 1, 2, 2, 161, 97, 3, 161, 98, 4, 196, 1, 1, 5, 196, 1, 2, 6]);
+        const expected = Uint8Array.from([
+          136, 1, 1, 2, 2, 161, 97, 3, 161, 98, 4, 161, 0, 5, 161, 100, 6, 196, 1, 1, 7, 196, 1, 2, 8,
+        ]);
         assert.deepStrictEqual(m1Encoded, expected);
       });
     });
