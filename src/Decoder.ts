@@ -2,7 +2,7 @@ import { prettyByte } from "./utils/prettyByte";
 import { ExtensionCodec, ExtensionCodecType } from "./ExtensionCodec";
 import { IntMode, getInt64, getUint64, convertSafeIntegerToMode, UINT32_MAX } from "./utils/int";
 import { utf8Decode } from "./utils/utf8";
-import { createDataView, ensureUint8Array } from "./utils/typedArrays";
+import { createDataView, ensureUint8Array, RawBinaryString } from "./utils/typedArrays";
 import { CachedKeyDecoder, KeyDecoder } from "./CachedKeyDecoder";
 import { DecodeError } from "./DecodeError";
 import type { ContextOf } from "./context";
@@ -52,6 +52,17 @@ export type DecoderOptions<ContextType = undefined> = Readonly<
      * for string values.
      */
     rawBinaryStringKeys: boolean;
+
+    /**
+     * If true, the decoder will use the RawBinaryString class to store raw binary strings created
+     * during decoding from the rawBinaryStringValues and rawBinaryStringKeys options. If false, it
+     * will use Uint8Arrays.
+     *
+     * Defaults to false.
+     *
+     * Has no effect if rawBinaryStringValues and rawBinaryStringKeys are both false.
+     */
+    useRawBinaryStringClass: boolean;
 
     /**
      * If true, the decoder will use the Map object to store map values. If false, it will use plain
@@ -126,7 +137,13 @@ type MapKeyType = string | number | bigint | Uint8Array;
 
 function isValidMapKeyType(key: unknown, useMap: boolean, supportObjectNumberKeys: boolean): key is MapKeyType {
   if (useMap) {
-    return typeof key === "string" || typeof key === "number" || typeof key === "bigint" || key instanceof Uint8Array;
+    return (
+      typeof key === "string" ||
+      typeof key === "number" ||
+      typeof key === "bigint" ||
+      key instanceof Uint8Array ||
+      key instanceof RawBinaryString
+    );
   }
   // Plain objects support a more limited set of key types
   return typeof key === "string" || (supportObjectNumberKeys && typeof key === "number");
@@ -261,6 +278,7 @@ export class Decoder<ContextType = undefined> {
   private readonly intMode: IntMode;
   private readonly rawBinaryStringValues: boolean;
   private readonly rawBinaryStringKeys: boolean;
+  private readonly useRawBinaryStringClass: boolean;
   private readonly useMap: boolean;
   private readonly supportObjectNumberKeys: boolean;
   private readonly maxStrLength: number;
@@ -285,6 +303,7 @@ export class Decoder<ContextType = undefined> {
     this.intMode = options?.intMode ?? (options?.useBigInt64 ? IntMode.AS_ENCODED : IntMode.UNSAFE_NUMBER);
     this.rawBinaryStringValues = options?.rawBinaryStringValues ?? false;
     this.rawBinaryStringKeys = options?.rawBinaryStringKeys ?? false;
+    this.useRawBinaryStringClass = options?.useRawBinaryStringClass ?? false;
     this.useMap = options?.useMap ?? false;
     this.supportObjectNumberKeys = options?.supportObjectNumberKeys ?? false;
     this.maxStrLength = options?.maxStrLength ?? UINT32_MAX;
@@ -716,9 +735,13 @@ export class Decoder<ContextType = undefined> {
     this.stack.pushArrayState(size);
   }
 
-  private decodeString(byteLength: number, headerOffset: number): string | Uint8Array {
+  private decodeString(byteLength: number, headerOffset: number): string | Uint8Array | RawBinaryString {
     if (this.stateIsMapKey() ? this.rawBinaryStringKeys : this.rawBinaryStringValues) {
-      return this.decodeBinary(byteLength, headerOffset);
+      const decoded = this.decodeBinary(byteLength, headerOffset);
+      if (this.useRawBinaryStringClass) {
+        return new RawBinaryString(decoded);
+      }
+      return decoded;
     }
     return this.decodeUtf8String(byteLength, headerOffset);
   }
