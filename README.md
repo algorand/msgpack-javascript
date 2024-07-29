@@ -162,6 +162,7 @@ NodeJS `Buffer` is also acceptable because it is a subclass of `Uint8Array`.
 | intMode                 | IntMode        | `IntMode.AS_ENCODED` if `useBigInt64` is `true` or `IntMode.UNSAFE_NUMBER` otherwise |
 | rawBinaryStringKeys     | boolean        | false                                                                                |
 | rawBinaryStringValues   | boolean        | false                                                                                |
+| useRawBinaryStringClass | boolean        | false                                                                                |
 | useMap                  | boolean        | false                                                                                |
 | supportObjectNumberKeys | boolean        | false                                                                                |
 | maxStrLength            | number         | `4_294_967_295` (UINT32_MAX)                                                         |
@@ -174,7 +175,7 @@ You can use `max${Type}Length` to limit the length of each type decoded.
 
 `intMode` determines whether decoded integers should be returned as numbers or bigints in different circumstances. The possible values are [described below](#intmode).
 
-To skip UTF-8 decoding of strings, one or both of `rawBinaryStringKeys` and `rawBinaryStringValues` can be set to `true`. If enabled, strings are decoded into `Uint8Array`. `rawBinaryStringKeys` affects only map keys, while `rawBinaryStringValues` affect all other string values.
+To skip UTF-8 decoding of strings, one or both of `rawBinaryStringKeys` and `rawBinaryStringValues` can be set to `true`. If enabled, strings are decoded into `Uint8Array`, or a `RawBinaryString` which wraps a `Uint8Array` if `useRawBinaryStringClass` is true. `rawBinaryStringKeys` affects only map keys, while `rawBinaryStringValues` affect all other string values. You may want to enable `useRawBinaryStringClass` if you want to distinguish between regular strings and binary strings, or if you wish to re-encode the object, since `RawBinaryString` instances will be encoded as regular strings.
 
 If `useMap` is enabled, maps are decoded into the `Map` container instead of plain objects. `Map` objects support a wider range of key types. Plain objects only support string keys (though you can enable `supportObjectNumberKeys` to coerce number keys to strings), while `Map` objects support strings, numbers, bigints, and Uint8Arrays.
 
@@ -549,7 +550,7 @@ The mapping of integers varies on the setting of `intMode`.
 
 - \*1 Both `null` and `undefined` are mapped to `nil` (`0xC0`) type, and are decoded into `null`
 - \*2 MessagePack ints are decoded as either numbers or bigints depending on the [IntMode](#intmode) used during decoding.
-- \*3 If you'd like to skip UTF-8 decoding of strings, enable one of `rawBinaryStringKeys` or `rawBinaryStringValues`. In that case, strings are decoded into `Uint8Array`.
+- \*3 If you'd like to skip UTF-8 decoding of strings, enable one of `rawBinaryStringKeys` or `rawBinaryStringValues`. In that case, strings are decoded into a `Uint8Array` or a `RawBinaryString`, depending on the value of `useRawBinaryStringClass`.
 - \*4 Any `ArrayBufferView`s including NodeJS's `Buffer` are mapped to `bin` family, and are decoded into `Uint8Array`
 - \*5 In handling `Object`, it is regarded as `Record<string, unknown>` in terms of TypeScript
 - \*6 MessagePack timestamps may have nanoseconds, which will lost when it is decoded into JavaScript `Date`. This behavior can be overridden by registering `-1` for the extension codec.
