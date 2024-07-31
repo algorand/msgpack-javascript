@@ -26,6 +26,8 @@ import { Encoder } from "./Encoder";
 export { Encoder };
 import type { EncoderOptions } from "./Encoder";
 export type { EncoderOptions };
+import { RawBinaryString } from "./utils/typedArrays";
+export { RawBinaryString };
 
 // Utilities for Extension Types:
 

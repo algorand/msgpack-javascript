@@ -1,7 +1,7 @@
 import { utf8Count, utf8Encode } from "./utils/utf8";
 import { ExtensionCodec, ExtensionCodecType } from "./ExtensionCodec";
 import { setInt64, setUint64 } from "./utils/int";
-import { ensureUint8Array, compareUint8Arrays } from "./utils/typedArrays";
+import { ensureUint8Array, compareUint8Arrays, RawBinaryString } from "./utils/typedArrays";
 import type { ExtData } from "./ExtData";
 import type { ContextOf } from "./context";
 
@@ -326,6 +326,8 @@ export class Encoder<ContextType = undefined> {
       this.encodeArray(object, depth);
     } else if (ArrayBuffer.isView(object)) {
       this.encodeBinary(object);
+    } else if (object instanceof RawBinaryString) {
+      this.encodeBinaryAsString(object);
     } else if (typeof object === "bigint") {
       // this is here instead of in doEncode so that we can try encoding with an extension first,
       // otherwise we would break existing extensions for bigints
@@ -357,6 +359,13 @@ export class Encoder<ContextType = undefined> {
     } else {
       throw new Error(`Too large binary: ${size}`);
     }
+    const bytes = ensureUint8Array(object);
+    this.writeU8a(bytes);
+  }
+
+  private encodeBinaryAsString(binaryString: RawBinaryString) {
+    const object = binaryString.rawBinaryValue;
+    this.writeStringHeader(object.byteLength);
     const bytes = ensureUint8Array(object);
     this.writeU8a(bytes);
   }
@@ -397,6 +406,7 @@ export class Encoder<ContextType = undefined> {
   private sortMapKeys(keys: Array<unknown>): Array<unknown> {
     const numericKeys: Array<number | bigint> = [];
     const stringKeys: Array<string> = [];
+    const rawStringKeys: Array<RawBinaryString> = [];
     const binaryKeys: Array<Uint8Array> = [];
     for (const key of keys) {
       if (typeof key === "number") {
@@ -410,15 +420,20 @@ export class Encoder<ContextType = undefined> {
         stringKeys.push(key);
       } else if (ArrayBuffer.isView(key)) {
         binaryKeys.push(ensureUint8Array(key));
+      } else if (key instanceof RawBinaryString) {
+        rawStringKeys.push(key);
       } else {
         throw new Error(`Unsupported map key type: ${Object.prototype.toString.apply(key)}`);
       }
     }
     numericKeys.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)); // Avoid using === to compare numbers and bigints
     stringKeys.sort();
+    rawStringKeys.sort((a, b) =>
+      compareUint8Arrays(ensureUint8Array(a.rawBinaryValue), ensureUint8Array(b.rawBinaryValue)),
+    );
     binaryKeys.sort(compareUint8Arrays);
-    // At the moment this arbitrarily orders the keys as numeric, string, binary
-    return ([] as Array<unknown>).concat(numericKeys, stringKeys, binaryKeys);
+    // At the moment this arbitrarily orders the keys as numeric, string, raw string, binary
+    return ([] as Array<unknown>).concat(numericKeys, stringKeys, rawStringKeys, binaryKeys);
   }
 
   private encodeMapObject(object: Record<string, unknown>, depth: number) {
@@ -464,6 +479,8 @@ export class Encoder<ContextType = undefined> {
           this.encodeBigInt(key);
         } else if (ArrayBuffer.isView(key)) {
           this.encodeBinary(key);
+        } else if (key instanceof RawBinaryString) {
+          this.encodeBinaryAsString(key);
         } else {
           throw new Error(`Unsupported map key type: ${Object.prototype.toString.apply(key)}`);
         }
