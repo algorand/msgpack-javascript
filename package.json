@@ -1,6 +1,6 @@
 {
   "name": "algorand-msgpack",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "MessagePack for ECMA-262/JavaScript/TypeScript",
   "author": "Algorand Technologies & the MessagePack community",
   "license": "ISC",
