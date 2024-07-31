@@ -1,6 +1,6 @@
 # This is the revision history of algorand-msgpack
 
-## 1.1.0 2024-31-07
+## 1.1.0 2024-07-31
 
 https://github.com/algorand/msgpack-javascript/compare/algorand-v1.0.1...algorand-v1.1.0
 
